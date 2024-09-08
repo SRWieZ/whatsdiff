@@ -1,0 +1,75 @@
+name: Build binary for macOS x86_64
+
+on:
+  release:
+    types: [ created ]
+
+  workflow_dispatch:
+
+env:
+  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  BINARY_NAME: 'whatsdiff-macos-x86_64'
+  COMPILE_PHP_VERSION: "8.3"
+
+
+jobs:
+  build-macos-binary:
+    runs-on: macos-13
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+
+      - name: Install macOS missing packages and mark os suffix
+        run: |
+          brew install automake gzip 
+          echo "SPC_BUILD_OS=macos" >> $GITHUB_ENV
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ env.COMPILE_PHP_VERSION }}
+          tools: pecl, composer
+          extensions: curl, openssl, mbstring, tokenizer
+          ini-values: memory_limit=-1
+
+      - name: Cache build dependencies
+        uses: actions/cache@v4
+        with:
+          path: build/
+          key: build-deps-php${{ env.COMPILE_PHP_VERSION }}-${{ runner.os }}-${{ runner.arch }}
+
+      - name: Get composer cache directory
+        id: composer-cache
+        run: echo "dir=$(composer config cache-files-dir)" >> $GITHUB_OUTPUT
+
+      - name: Cache dependencies
+        uses: actions/cache@v4
+        with:
+          path: ${{ steps.composer-cache.outputs.dir }}
+          key: ${{ runner.os }}-composer-${{ hashFiles('**/composer.lock') }}
+          restore-keys: ${{ runner.os }}-composer-
+
+      - name: Composer install
+        run: composer install --prefer-dist --no-progress --optimize-autoloader
+
+      - name: Build Binary
+        run: ./build.sh --name "${{ env.BINARY_NAME }}"
+
+      - if: ${{ github.event_name == 'workflow_dispatch' }}
+        name: Upload binaries
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.BINARY_NAME }}
+          path: build/bin/${{ env.BINARY_NAME }}
+
+      - if: ${{ github.event_name != 'workflow_dispatch' }}
+        name: Upload binaries to release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: build/bin/${{ env.BINARY_NAME }}

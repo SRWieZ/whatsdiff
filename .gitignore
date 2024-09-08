@@ -1,0 +1,19 @@
+# Ignore vendor directory
+/vendor
+
+# Ignore .env file (if used)
+.env
+
+# Ignore IDE-specific files and directories
+.idea/
+.vscode/
+*.sublime-*
+
+# Ignore log and cache directories
+/logs/
+/cache/
+/tmp
+/build
+.phpunit.result.cache
+.DS_Store
+

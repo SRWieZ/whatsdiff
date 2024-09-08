@@ -1,0 +1,6 @@
+#!/usr/bin/env php
+<?php
+
+include $_composer_autoload_path ?? __DIR__ . '/../vendor/autoload.php';
+
+require __DIR__.'/../src/whatsdiff.php';

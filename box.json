@@ -1,0 +1,12 @@
+{
+  "main": "src/whatsdiff.php",
+  "output": "build/bin/whatsdiff.phar",
+  "banner": false,
+  "blacklist": [
+    "tests"
+  ],
+  "compactors": [
+    "KevinGH\\Box\\Compactor\\Php"
+  ],
+  "git-tag": "git_tag"
+}

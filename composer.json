@@ -1,0 +1,57 @@
+{
+  "name": "srwiez/whatsdiff",
+  "description": "See what's changed in your project's dependencies",
+  "license": "MIT",
+  "authors": [
+    {
+      "name": "Eser DENIZ",
+      "email": "srwiez@gmail.com"
+    }
+  ],
+  "bin": [
+    "bin/whatsdiff"
+  ],
+  "require": {
+    "php": "^8.2|^8.3",
+    "ext-dom": "*",
+    "composer-runtime-api": "^2.2"
+  },
+  "require-dev": {
+    "pestphp/pest": "^2.24",
+    "laravel/pint": "^1.13",
+    "humbug/box": "^4.3"
+  },
+  "config": {
+    "allow-plugins": {
+      "pestphp/pest-plugin": true
+    }
+  },
+  "autoload": {
+  },
+  "minimum-stability": "stable",
+  "prefer-stable": true,
+  "autoload-dev": {
+    "psr-4": {
+      "Tests\\": "tests/"
+    }
+  },
+  "scripts": {
+    "build": [
+      "Composer\\Config::disableProcessTimeout",
+      "./build.sh"
+    ],
+    "qa": [
+      "@composer pint",
+      "@composer test"
+    ],
+    "box": [
+      "./vendor/bin/box"
+    ],
+    "pint": [
+      "./vendor/bin/pint --preset psr12"
+    ],
+    "test": [
+      "./vendor/bin/pest"
+    ]
+  }
+}
