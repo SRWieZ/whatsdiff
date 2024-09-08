@@ -137,9 +137,9 @@ function diffComposerLockPackages($last, $previous)
 
 function printDiff(array $diff): void
 {
-    if (!count($diff)) {
-        return;
-    }
+    // if (!count($diff)) {
+    //     return;
+    // }
     $maxStrLen = max(array_map('strlen', array_keys($diff)));
     $maxStrLenVersion = max(array_map(fn ($el) => strlen($el[0]), $diff));
     foreach ($diff as $package => $infos) {
