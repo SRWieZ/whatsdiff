@@ -12,7 +12,7 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-latest]
-        php: [8.0, 8.1, 8.2, 8.3]
+        php: ['8.0', '8.1', '8.2', '8.3']
 
     name: Test with php ${{ matrix.php }} on ${{ matrix.os }}
 
@@ -39,7 +39,7 @@ jobs:
           restore-keys: ${{ runner.os }}-composer-
 
       - name: Install Dependencies
-        run: composer install -q --no-ansi --no-interaction --no-scripts --no-progress --prefer-dist
+        run: composer update -q --no-ansi --no-interaction --no-scripts --no-progress --prefer-dist
 
       - name: Run tests
         run: ./vendor/bin/pest
