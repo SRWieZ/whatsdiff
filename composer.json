@@ -12,9 +12,11 @@
     "bin/whatsdiff"
   ],
   "require": {
-    "php": "^8.2|^8.3",
+    "php": "^8.2",
     "ext-dom": "*",
-    "composer-runtime-api": "^2.2"
+    "composer-runtime-api": "^2.2",
+    "laravel/prompts": "^0.1.25",
+    "illuminate/collections": "^11.22"
   },
   "require-dev": {
     "pestphp/pest": "^2.24",
