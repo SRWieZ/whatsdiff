@@ -1,6 +1,7 @@
 <?php
 
 
+use Composer\Semver\Comparator;
 
 if (! class_exists('\Composer\InstalledVersions')) {
     require __DIR__.'/../vendor/autoload.php';
@@ -38,11 +39,12 @@ function showHelp(): void
     echo "See what's changed in your project's dependencies".PHP_EOL;
     echo PHP_EOL;
     echo 'Options:'.PHP_EOL;
-    echo '  -V, --version       Show app versions'.PHP_EOL;
-    echo '      --ignore-last   Ignore last uncommited changes'.PHP_EOL;
+    echo '  -V, --version         Show app versions'.PHP_EOL;
+    echo '      --ignore-last     Ignore last uncommited changes'.PHP_EOL;
     echo PHP_EOL;
     echo 'Commands:'.PHP_EOL;
-    echo '  help                Show this help information'.PHP_EOL;
+    echo '  help                  Show this help information'.PHP_EOL;
+    echo '  between [from] [to]   Show differences between two commit hash'.PHP_EOL;
     echo PHP_EOL;
     echo 'Informations:'.PHP_EOL;
     echo ! str_starts_with($version, '@git_tag') ? '  Version: '.$version.PHP_EOL : '';
@@ -129,7 +131,65 @@ function diffComposerLockPackages($last, $previous)
 
     return $diff->merge($newPackages)
         ->filter(fn ($el) => $el['from'] !== $el['to'])
+        ->sortKeys()
         ->toArray();
+}
+
+function printDiff(array $diff): void
+{
+    $maxStrLen = max(array_map('strlen', array_keys($diff)));
+    $maxStrLenVersion = max(array_map(fn ($el) => strlen($el[0]), $diff));
+    foreach ($diff as $package => $infos) {
+        if ($infos['from'] !== null && $infos['to'] !== null) {
+            if (Comparator::greaterThan($infos['to'], $infos['from'])) {
+                $releases = getNewReleases($package, $infos['from'], $infos['to']);
+                $nbReleases = count($releases);
+
+                echo '[U] '.str_pad($package, $maxStrLen).' : '.str_pad($infos['from'], $maxStrLenVersion).' => '.$infos['to']($nbReleases > 1 ? "($nbReleases releases)" : "").PHP_EOL;
+            } else {
+                echo '[D] '.str_pad($package, $maxStrLen).' : '.str_pad(
+                    $infos['from'],
+                    $maxStrLenVersion
+                ).' => '.$infos['to'].PHP_EOL;
+            }
+        } elseif ($infos['from'] === null) {
+            echo '[+] '.str_pad($package, $maxStrLen).' : '.$infos['to'].PHP_EOL;
+        } elseif ($infos['to'] === null) {
+            echo '[-] '.str_pad($package, $maxStrLen).' : '.$infos['from'].PHP_EOL;
+        }
+    }
+}
+
+function getNewReleases(string $package, string $from, string $to): array
+{
+    $packageInfos = file_get_contents('https://repo.packagist.org/p2/'.$package.'.json');
+    $packageInfos = json_decode($packageInfos, associative: true);
+
+    $versions = $packageInfos['packages'][$package];
+
+    $returnVersions = [];
+
+    $foundTo = false;
+    $foundFrom = false;
+    foreach ($versions as $infos) {
+        if ($infos['version'] === $from) {
+            $foundFrom = true;
+        }
+
+        if ($infos['version'] === $to) {
+            $foundTo = true;
+        }
+
+        if (Comparator::greaterThan($infos['version'], $from)) {
+            $returnVersions[] = $infos['version'];
+        }
+
+        if ($foundFrom && $foundTo) {
+            break;
+        }
+    }
+
+    return $returnVersions;
 }
 
 if ($command === 'help' || $options['show_version']) {
@@ -146,4 +206,7 @@ $recentlyUpdated = ! $options['ignore_last'] && isFileHasBeenRecentlyUpdated($fi
 
 [$last, $previous] = getFilesToCompare($filename, $commitLogs, $recentlyUpdated);
 
-dump(diffComposerLockPackages($last, $previous));
+printDiff(diffComposerLockPackages($last, $previous));
+
+// getNewReleases('laravel/framework', 'v11.19.0', 'v11.22.0');
+// getNewReleases('srwiez/svgtinyps-cli', 'v1.0', 'v1.3');
