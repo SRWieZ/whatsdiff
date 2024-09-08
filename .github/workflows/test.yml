@@ -39,7 +39,7 @@ jobs:
           restore-keys: ${{ runner.os }}-composer-
 
       - name: Install Dependencies
-        run: composer update -q --no-ansi --no-interaction --no-scripts --no-progress --prefer-dist
+        run: composer update --no-interaction --prefer-dist
 
       - name: Run tests
         run: ./vendor/bin/pest
