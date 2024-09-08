@@ -210,3 +210,5 @@ printDiff(diffComposerLockPackages($last, $previous));
 
 // getNewReleases('laravel/framework', 'v11.19.0', 'v11.22.0');
 // getNewReleases('srwiez/svgtinyps-cli', 'v1.0', 'v1.3');
+
+exit(0);
