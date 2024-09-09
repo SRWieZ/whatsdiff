@@ -129,7 +129,7 @@ function diffComposerLockPackages($last, $previous)
         ]);
 
     $newPackages = collect($last)
-        ->diffAssoc($previous)
+        ->diffKeys($previous)
         ->mapWithKeys(fn ($version, $name) => [
             $name => [
                 'from' => null,
@@ -159,10 +159,7 @@ function printDiff(array $diff): void
                 $releases = getNewReleases($package, $infos['from'], $infos['to']);
                 $nbReleases = count($releases);
 
-                echo '[U] '.str_pad($package, $maxStrLen).' : '.str_pad(
-                    $infos['from'],
-                    $maxStrLenVersion
-                ).' => '.$infos['to']($nbReleases > 1 ? "($nbReleases releases)" : "").PHP_EOL;
+                echo '[U] '.str_pad($package, $maxStrLen).' : '.str_pad($infos['from'], $maxStrLenVersion).' => '.$infos['to'].($nbReleases > 1 ? " ($nbReleases releases)" : "").PHP_EOL;
             } else {
                 echo '[D] '.str_pad($package, $maxStrLen).' : '.str_pad(
                     $infos['from'],
