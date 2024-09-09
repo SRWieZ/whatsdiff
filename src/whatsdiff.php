@@ -44,7 +44,8 @@ function showHelp(): void
     echo PHP_EOL;
     echo 'Commands:'.PHP_EOL;
     echo '  help                  Show this help information'.PHP_EOL;
-    echo '  between [from] [to]   Show differences between two commit hash'.PHP_EOL;
+    // echo '  between [from] [to]   Show differences between two commit hash'.PHP_EOL;
+    // echo '  on [commit_hash]      Show packages updates occurred at a given commit hash'.PHP_EOL;
     echo PHP_EOL;
     echo 'Informations:'.PHP_EOL;
     echo ! str_starts_with($version, '@git_tag') ? '  Version: '.$version.PHP_EOL : '';
@@ -80,17 +81,25 @@ function getFileContentOfCommit(string $filename, string $commitHash): string
     return shell_exec("git show $commitHash:$filename");
 }
 
-function getFilesToCompare(string $filename, array $commitLogs, bool $recentlyUpdated): array
+function getCommitHashToCompare(array $commitLogs, bool $recentlyUpdated): array
 {
-    $last = $recentlyUpdated ? file_get_contents($filename) : getFileContentOfCommit($filename, $commitLogs[0]);
+    $last = $recentlyUpdated ? null : $commitLogs[0];
 
     $previousHashKey = $recentlyUpdated ? 0 : 1;
 
     if (! isset($commitLogs[$previousHashKey])) {
-        throw new Exception('Could not found any previous changes in '.$filename);
+        throw new Exception('Could not found any previous changes');
     }
 
-    $previous = getFileContentOfCommit($filename, $commitLogs[$previousHashKey]);
+    $previous = $commitLogs[$previousHashKey];
+
+    return [$last, $previous];
+}
+
+function getFilesToCompare(string $filename, ?string $lastHash, string $previousHash): array
+{
+    $last = $lastHash ? getFileContentOfCommit($filename, $lastHash) : file_get_contents($filename);
+    $previous = getFileContentOfCommit($filename, $previousHash);
 
     return [$last, $previous];
 }
@@ -137,9 +146,11 @@ function diffComposerLockPackages($last, $previous)
 
 function printDiff(array $diff): void
 {
-    // if (!count($diff)) {
-    //     return;
-    // }
+    if (! count($diff)) {
+        echo ' → No changes detected'.PHP_EOL;
+
+        return;
+    }
     $maxStrLen = max(array_map('strlen', array_keys($diff)));
     $maxStrLenVersion = max(array_map(fn ($el) => strlen($el[0]), $diff));
     foreach ($diff as $package => $infos) {
@@ -148,7 +159,10 @@ function printDiff(array $diff): void
                 $releases = getNewReleases($package, $infos['from'], $infos['to']);
                 $nbReleases = count($releases);
 
-                echo '[U] '.str_pad($package, $maxStrLen).' : '.str_pad($infos['from'], $maxStrLenVersion).' => '.$infos['to']($nbReleases > 1 ? "($nbReleases releases)" : "").PHP_EOL;
+                echo '[U] '.str_pad($package, $maxStrLen).' : '.str_pad(
+                    $infos['from'],
+                    $maxStrLenVersion
+                ).' => '.$infos['to']($nbReleases > 1 ? "($nbReleases releases)" : "").PHP_EOL;
             } else {
                 echo '[D] '.str_pad($package, $maxStrLen).' : '.str_pad(
                     $infos['from'],
@@ -207,7 +221,15 @@ $commitLogs = gitLogOfFile($filename);
 
 $recentlyUpdated = ! $options['ignore_last'] && isFileHasBeenRecentlyUpdated($filename);
 
-[$last, $previous] = getFilesToCompare($filename, $commitLogs, $recentlyUpdated);
+if ($recentlyUpdated) {
+    echo 'Uncommited changes detected on '.$filename.PHP_EOL.PHP_EOL;
+}
+
+[$lastHash, $previousHash] = getCommitHashToCompare($commitLogs, $recentlyUpdated);
+
+echo 'Changes between '.$previousHash.' and '.($lastHash ?? 'uncommited changes').PHP_EOL;
+
+[$last, $previous] = getFilesToCompare($filename, $lastHash, $previousHash);
 
 printDiff(diffComposerLockPackages($last, $previous));
 
