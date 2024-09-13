@@ -41,6 +41,8 @@ function showHelp(): void
     echo 'Options:'.PHP_EOL;
     echo '  -V, --version         Show app versions'.PHP_EOL;
     echo '      --ignore-last     Ignore last uncommited changes'.PHP_EOL;
+    // echo '      --back={n}        Number of times to go back in time'.PHP_EOL;
+    // echo '      --json            Return a json result'.PHP_EOL;
     echo PHP_EOL;
     echo 'Commands:'.PHP_EOL;
     echo '  help                  Show this help information'.PHP_EOL;
