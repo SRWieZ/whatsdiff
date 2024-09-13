@@ -8,7 +8,9 @@ if (! class_exists('\Composer\InstalledVersions')) {
 }
 
 error_reporting(0);
-(new \NunoMaduro\Collision\Provider())->register();
+if (! class_exists('\NunoMaduro\Collision\Provider')) {
+    (new \NunoMaduro\Collision\Provider())->register();
+}
 
 // Argument parsing
 $argv = array_slice($argv, 1); // Remove script name

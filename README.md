@@ -10,7 +10,7 @@ CLI Tool to see what's changed in your project's dependencies
 ## 🚀 Installation
 Via [Composer](https://getcomposer.org/) global install command
 ```bash
-composer global install srwiez/whatsdiff
+composer global requireTyp srwiez/whatsdiff
 ```
 
 By [downloading binaries](https://github.com/SRWieZ/whatsdiff/releases/latest) on the latest release, currently only these binaries are compiled on the CI:
