@@ -8,10 +8,10 @@ if (! class_exists('\Composer\InstalledVersions')) {
 }
 
 if (class_exists('\NunoMaduro\Collision\Provider')) {
-    error_reporting(0);
     (new \NunoMaduro\Collision\Provider())->register();
 } else {
-    // TODO : register a function to catch exception
+    error_reporting(0);
+    // TODO : register a function to catch exception and show nice exception
 }
 
 // Argument parsing
@@ -71,6 +71,10 @@ function isFileHasBeenRecentlyUpdated(string $filename): bool
 {
     // Execute the command and get the output
     $output = shell_exec("git status --porcelain");
+
+    if (is_null($output)) {
+        return false;
+    }
 
     $status = collect(explode("\n", trim($output)))
         ->mapWithKeys(function ($line) {
@@ -158,7 +162,7 @@ function printDiff(array $diff): void
         return;
     }
     $maxStrLen = max(array_map('strlen', array_keys($diff)));
-    $maxStrLenVersion = max(array_map(fn ($el) => strlen($el[0]), $diff));
+    $maxStrLenVersion = max(array_map(fn ($el) => strlen($el['from']), $diff));
     foreach ($diff as $package => $infos) {
         if ($infos['from'] !== null && $infos['to'] !== null) {
             if (Comparator::greaterThan($infos['to'], $infos['from'])) {
