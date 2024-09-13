@@ -7,9 +7,11 @@ if (! class_exists('\Composer\InstalledVersions')) {
     require __DIR__.'/../vendor/autoload.php';
 }
 
-error_reporting(0);
-if (! class_exists('\NunoMaduro\Collision\Provider')) {
+if (class_exists('\NunoMaduro\Collision\Provider')) {
+    error_reporting(0);
     (new \NunoMaduro\Collision\Provider())->register();
+} else {
+    // TODO : register a function to catch exception
 }
 
 // Argument parsing
