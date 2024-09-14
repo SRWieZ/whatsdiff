@@ -8,9 +8,9 @@
 CLI Tool to see what's changed in your project's dependencies
 
 ## 🚀 Installation
-Via [Composer](https://getcomposer.org/) global install command
+Via [Composer](https://getcomposer.org/) global require command
 ```bash
-composer global requireTyp srwiez/whatsdiff
+composer global require srwiez/whatsdiff
 ```
 
 By [downloading binaries](https://github.com/SRWieZ/whatsdiff/releases/latest) on the latest release, currently only these binaries are compiled on the CI:
@@ -32,10 +32,14 @@ Pull requests are welcome! Here are some ideas to get you started:
 - [x] Analyse composer.lock
 - [x] Find releases through packagist.com
 - [ ] Retrieve changelog with Github API
-- [ ] Analyse package-json.lock
-- [ ] Analyse gradle dependencies
-- [ ] Analyse cocoapods dependencies
-- [ ] Use Symfony Console for better ui
+- [ ] Make a nice TUI
+- [ ] Analyse package-json.lock / yarn.lock (javascript)
+- [ ] Analyse gradle dependencies (android)
+- [ ] Analyse cocoapods dependencies (iOS)
+- [ ] Analyse pip dependencies (python)
+- [ ] Analyse gem dependencies (ruby)
+- [ ] Analyse cargo dependencies (rust)
+- [ ] Analyse go.mod dependencies (go)
 - [ ] Publish on Homebrew
 
 ## 🔧 Contributing
