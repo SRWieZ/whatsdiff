@@ -204,7 +204,7 @@ function getNewReleases(string $package, string $from, string $to): array
             $foundTo = true;
         }
 
-        if (Comparator::greaterThan($infos['version'], $from)) {
+        if (Comparator::greaterThan($infos['version'], $from) && Comparator::lessThan($infos['version'], $to)) {
             $returnVersions[] = $infos['version'];
         }
 
