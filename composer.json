@@ -25,8 +25,7 @@
     "pestphp/pest": "^2.24",
     "laravel/pint": "^1.13",
     "humbug/box": "^4.3",
-    "nunomaduro/collision": "^7.0|^8.0",
-    "spatie/ray": "^1.41"
+    "nunomaduro/collision": "^7.0|^8.0"
   },
   "config": {
     "allow-plugins": {

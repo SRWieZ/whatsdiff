@@ -62,7 +62,11 @@ function showHelp(): void
 
 function gitLogOfFile(string $filename): array
 {
-    $output = shell_exec("git log --pretty=format:'%h' $filename");
+    $output = shell_exec("git log --pretty=format:'%h' -- '$filename'"); // TODO: escape filename
+
+    if (is_null($output)) {
+        return [];
+    }
 
     return explode("\n", $output);
 }
@@ -83,7 +87,13 @@ function isFileHasBeenRecentlyUpdated(string $filename): bool
             return [$line[1] => $line[0]];
         });
 
-    return $status->get($filename) == 'M';
+    return in_array($status->get($filename), [
+        // todo: read the docs
+        'AM', // Added and modified
+        'M', // Modified
+        'A', // Added
+        '??' // Untracked
+    ]);
 }
 
 function getFileContentOfCommit(string $filename, string $commitHash): string
@@ -97,38 +107,76 @@ function getCommitHashToCompare(array $commitLogs, bool $recentlyUpdated): array
 
     $previousHashKey = $recentlyUpdated ? 0 : 1;
 
-    if (! isset($commitLogs[$previousHashKey])) {
-        throw new Exception('Could not found any previous changes');
-    }
-
-    $previous = $commitLogs[$previousHashKey];
+    $previous = $commitLogs[$previousHashKey] ?? null;
 
     return [$last, $previous];
 }
 
-function getFilesToCompare(string $filename, ?string $lastHash, string $previousHash): array
+function getFilesToCompare(string $filename, ?string $lastHash, ?string $previousHash): array
 {
     $last = $lastHash ? getFileContentOfCommit($filename, $lastHash) : file_get_contents($filename);
-    $previous = getFileContentOfCommit($filename, $previousHash);
+    $previous = $previousHash ? getFileContentOfCommit($filename, $previousHash) : null;
 
     return [$last, $previous];
 }
 
 function extractComposerPackagesVersions($composerLockContent): array
 {
-    return collect($composerLockContent['packages'])
+    return collect($composerLockContent['packages'] ?? [])
         ->merge($composerLockContent['packages-dev'])
         ->mapWithKeys(fn ($package) => [$package['name'] => $package['version']])
+        ->toArray();
+}
+
+function extractNpmjsPackagesVersions($composerLockContent): array
+{
+    return collect($composerLockContent['packages'] ?? [])
+        ->mapWithKeys(fn ($package, $key) => [
+            str_replace('node_modules/', '', $key) => $package['version']
+        ])
+        ->filter(fn ($version, $name) => ! empty($name))
         ->toArray();
 }
 
 function diffComposerLockPackages($last, $previous)
 {
     $last = json_decode($last, associative: true);
-    $previous = json_decode($previous, associative: true);
+    $previous = json_decode($previous ?? '{}', associative: true);
 
     $last = extractComposerPackagesVersions($last);
     $previous = extractComposerPackagesVersions($previous);
+
+    $diff = collect($previous)
+        ->mapWithKeys(fn ($version, $name) => [
+            $name => [
+                'from' => $version,
+                'to'   => $last[$name] ?? null,
+            ]
+        ]);
+
+    $newPackages = collect($last)
+        ->diffKeys($previous)
+        ->mapWithKeys(fn ($version, $name) => [
+            $name => [
+                'from' => null,
+                'to'   => $version,
+            ]
+        ]);
+
+
+    return $diff->merge($newPackages)
+        ->filter(fn ($el) => $el['from'] !== $el['to'])
+        ->sortKeys()
+        ->toArray();
+}
+
+function diffPackageLockPackages($last, $previous)
+{
+    $last = json_decode($last, associative: true);
+    $previous = json_decode($previous ?? '{}', associative: true);
+
+    $last = extractNpmjsPackagesVersions($last);
+    $previous = extractNpmjsPackagesVersions($previous);
 
     $diff = collect($previous)
         ->mapWithKeys(fn ($version, $name) => [
@@ -161,25 +209,32 @@ function printDiff(array $diff): void
 
         return;
     }
+
     $maxStrLen = max(array_map('strlen', array_keys($diff)));
-    $maxStrLenVersion = max(array_map(fn ($el) => strlen($el['from']), $diff));
+    $maxStrLenVersion = max(array_map(
+        fn ($el) => strlen($el['from']),
+        array_filter($diff, fn ($el) => $el['from'] !== null)
+    ) ?: [0]);
     foreach ($diff as $package => $infos) {
         if ($infos['from'] !== null && $infos['to'] !== null) {
             if (Comparator::greaterThan($infos['to'], $infos['from'])) {
                 $releases = getNewReleases($package, $infos['from'], $infos['to']);
                 $nbReleases = count($releases);
 
-                echo '[U] '.str_pad($package, $maxStrLen).' : '.str_pad($infos['from'], $maxStrLenVersion).' => '.$infos['to'].($nbReleases > 1 ? " ($nbReleases releases)" : "").PHP_EOL;
+                echo "\033[36m↑\033[0m ".str_pad($package, $maxStrLen).' : '.str_pad(
+                    $infos['from'],
+                    $maxStrLenVersion
+                ).' => '.$infos['to'].($nbReleases > 1 ? " ($nbReleases releases)" : "").PHP_EOL;
             } else {
-                echo '[D] '.str_pad($package, $maxStrLen).' : '.str_pad(
+                echo "\033[33m↓\033[0m ".str_pad($package, $maxStrLen).' : '.str_pad(
                     $infos['from'],
                     $maxStrLenVersion
                 ).' => '.$infos['to'].PHP_EOL;
             }
         } elseif ($infos['from'] === null) {
-            echo '[+] '.str_pad($package, $maxStrLen).' : '.$infos['to'].PHP_EOL;
+            echo "\033[32m+\033[0m ".str_pad($package, $maxStrLen).' : '.$infos['to'].PHP_EOL;
         } elseif ($infos['to'] === null) {
-            echo '[-] '.str_pad($package, $maxStrLen).' : '.$infos['from'].PHP_EOL;
+            echo "\033[31m×\033[0m ".str_pad($package, $maxStrLen).' : '.$infos['from'].PHP_EOL;
         }
     }
 }
@@ -228,17 +283,57 @@ $commitLogs = gitLogOfFile($filename);
 
 $recentlyUpdated = ! $options['ignore_last'] && isFileHasBeenRecentlyUpdated($filename);
 
-if ($recentlyUpdated) {
-    echo 'Uncommited changes detected on '.$filename.PHP_EOL.PHP_EOL;
+if (! $recentlyUpdated && empty($commitLogs)) {
+    echo 'No commit logs found for '.$filename.PHP_EOL;
+} else {
+
+    if ($recentlyUpdated) {
+        echo 'Uncommited changes detected on '.$filename.PHP_EOL;
+    }
+
+    [$lastHash, $previousHash] = getCommitHashToCompare($commitLogs, $recentlyUpdated);
+
+    if ($previousHash === null) {
+        echo "No previous commit found, $filename has just been created".PHP_EOL;
+    } else {
+        echo $filename.' changed between '.$previousHash.' and '.($lastHash ?? 'uncommited changes').PHP_EOL;
+    }
+
+    echo PHP_EOL;
+
+    [$last, $previous] = getFilesToCompare($filename, $lastHash, $previousHash);
+
+    printDiff(diffComposerLockPackages($last, $previous));
 }
 
-[$lastHash, $previousHash] = getCommitHashToCompare($commitLogs, $recentlyUpdated);
 
-echo 'Changes between '.$previousHash.' and '.($lastHash ?? 'uncommited changes').PHP_EOL;
+echo PHP_EOL.'----------'.PHP_EOL.PHP_EOL;
+$filename = 'package-lock.json';
 
-[$last, $previous] = getFilesToCompare($filename, $lastHash, $previousHash);
+$commitLogs = gitLogOfFile($filename);
 
-printDiff(diffComposerLockPackages($last, $previous));
+$recentlyUpdated = ! $options['ignore_last'] && isFileHasBeenRecentlyUpdated($filename);
+
+if (! $recentlyUpdated && empty($commitLogs)) {
+    echo 'No commit logs found for '.$filename.PHP_EOL;
+} else {
+    if ($recentlyUpdated) {
+        echo 'Uncommited changes detected on '.$filename.PHP_EOL;
+    }
+
+    [$lastHash, $previousHash] = getCommitHashToCompare($commitLogs, $recentlyUpdated);
+
+    if ($previousHash === null) {
+        echo "No previous commit found, $filename has just been created".PHP_EOL;
+    } else {
+        echo $filename.' changed between '.$previousHash.' and '.($lastHash ?? 'uncommited changes').PHP_EOL;
+    }
+
+    [$last, $previous] = getFilesToCompare($filename, $lastHash, $previousHash);
+
+    echo PHP_EOL;
+    printDiff(diffPackageLockPackages($last, $previous));
+}
 
 // getNewReleases('laravel/framework', 'v11.19.0', 'v11.22.0');
 // getNewReleases('srwiez/svgtinyps-cli', 'v1.0', 'v1.3');
