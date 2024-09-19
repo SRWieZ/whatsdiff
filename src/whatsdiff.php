@@ -202,7 +202,7 @@ function diffPackageLockPackages($last, $previous)
         ->toArray();
 }
 
-function printDiff(array $diff): void
+function printDiff(array $diff, $type = 'composer'): void
 {
     if (! count($diff)) {
         echo ' → No changes detected'.PHP_EOL;
@@ -218,7 +218,7 @@ function printDiff(array $diff): void
     foreach ($diff as $package => $infos) {
         if ($infos['from'] !== null && $infos['to'] !== null) {
             if (Comparator::greaterThan($infos['to'], $infos['from'])) {
-                $releases = getNewReleases($package, $infos['from'], $infos['to']);
+                $releases = $type === 'composer' ? getNewReleases($package, $infos['from'], $infos['to']) : [];
                 $nbReleases = count($releases);
 
                 echo "\033[36m↑\033[0m ".str_pad($package, $maxStrLen).' : '.str_pad(
@@ -332,7 +332,7 @@ if (! $recentlyUpdated && empty($commitLogs)) {
     [$last, $previous] = getFilesToCompare($filename, $lastHash, $previousHash);
 
     echo PHP_EOL;
-    printDiff(diffPackageLockPackages($last, $previous));
+    printDiff(diffPackageLockPackages($last, $previous), type: 'npmjs');
 }
 
 // getNewReleases('laravel/framework', 'v11.19.0', 'v11.22.0');
