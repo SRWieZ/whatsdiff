@@ -218,7 +218,12 @@ function printDiff(array $diff, $type = 'composer'): void
     foreach ($diff as $package => $infos) {
         if ($infos['from'] !== null && $infos['to'] !== null) {
             if (Comparator::greaterThan($infos['to'], $infos['from'])) {
-                $releases = $type === 'composer' ? getNewReleases($package, $infos['from'], $infos['to']) : [];
+                $releases = match ($type) {
+                    'composer' => getComposerReleases($package, $infos['from'], $infos['to']),
+                    'npmjs' => getNpmjsReleases($package, $infos['from'], $infos['to']),
+                    default => [],
+                };
+
                 $nbReleases = count($releases);
 
                 echo "\033[36m↑\033[0m ".str_pad($package, $maxStrLen).' : '.str_pad(
@@ -239,12 +244,45 @@ function printDiff(array $diff, $type = 'composer'): void
     }
 }
 
-function getNewReleases(string $package, string $from, string $to): array
+function getComposerReleases(string $package, string $from, string $to): array
 {
     $packageInfos = file_get_contents('https://repo.packagist.org/p2/'.$package.'.json');
     $packageInfos = json_decode($packageInfos, associative: true);
 
     $versions = $packageInfos['packages'][$package];
+
+    $returnVersions = [];
+
+    $foundTo = false;
+    $foundFrom = false;
+    foreach ($versions as $infos) {
+        if ($infos['version'] === $from) {
+            $foundFrom = true;
+        }
+
+        if ($infos['version'] === $to) {
+            $foundTo = true;
+        }
+
+        if (Comparator::greaterThan($infos['version'], $from) && Comparator::lessThan($infos['version'], $to)) {
+            $returnVersions[] = $infos['version'];
+        }
+
+        if ($foundFrom && $foundTo) {
+            break;
+        }
+    }
+
+    return $returnVersions;
+}
+
+
+function getNpmjsReleases(string $package, string $from, string $to): array
+{
+    $packageInfos = file_get_contents('https://registry.npmjs.org/'.urlencode($package));
+    $packageInfos = json_decode($packageInfos, associative: true);
+
+    $versions = $packageInfos['versions'];
 
     $returnVersions = [];
 
@@ -308,6 +346,8 @@ if (! $recentlyUpdated && empty($commitLogs)) {
 
 
 echo PHP_EOL.'----------'.PHP_EOL.PHP_EOL;
+
+
 $filename = 'package-lock.json';
 
 $commitLogs = gitLogOfFile($filename);
@@ -335,7 +375,8 @@ if (! $recentlyUpdated && empty($commitLogs)) {
     printDiff(diffPackageLockPackages($last, $previous), type: 'npmjs');
 }
 
-// getNewReleases('laravel/framework', 'v11.19.0', 'v11.22.0');
-// getNewReleases('srwiez/svgtinyps-cli', 'v1.0', 'v1.3');
+// getComposerReleases('laravel/framework', 'v11.19.0', 'v11.22.0');
+// getComposerReleases('srwiez/svgtinyps-cli', 'v1.0', 'v1.3');
+// dump(getNpmjsReleases('alpinejs', '3.10.5', '3.14.1'));
 
 exit(0);
