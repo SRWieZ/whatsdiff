@@ -16,7 +16,7 @@
     "php": "^8.1",
     "ext-dom": "*",
     "composer-runtime-api": "^2.2",
-    "laravel/prompts": "^0.1.25",
+    "laravel/prompts": "^0.2.0",
     "illuminate/collections": "^10.0|^11.0",
     "composer/semver": "^3.4",
     "saloonphp/saloon": "^3.10"

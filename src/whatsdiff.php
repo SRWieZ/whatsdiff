@@ -378,5 +378,6 @@ if (! $recentlyUpdated && empty($commitLogs)) {
 // getComposerReleases('laravel/framework', 'v11.19.0', 'v11.22.0');
 // getComposerReleases('srwiez/svgtinyps-cli', 'v1.0', 'v1.3');
 // dump(getNpmjsReleases('alpinejs', '3.10.5', '3.14.1'));
+// dump(getNpmjsReleases('electron-to-chromium', '1.5.13', '1.5.25'));
 
 exit(0);
