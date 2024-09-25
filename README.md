@@ -5,7 +5,16 @@
 ![Packagist License (custom server)](https://img.shields.io/packagist/l/SRWieZ/whatsdiff)
 ![GitHub Workflow Status (with event)](https://img.shields.io/github/actions/workflow/status/SRWieZ/whatsdiff/test.yml)
 
-CLI Tool to see what's changed in your project's dependencies
+What's diff is a CLI tool to help you inspect what has changed in your dependencies after a `composer update` or `npm update`.
+
+![Capture d’écran 2024-09-19 à 20.00.47.png](assets/Capture%20d%E2%80%99%C3%A9cran%202024-09-19%20%C3%A0%2020.00.47.png)
+
+Main features are:
+- Show what has been added, removed or updated in your dependencies
+- Show how many releases have been made since your last update
+- Support for composer.lock and package-lock.json (PHP & JS)
+- [WIP] Show changelog of the dependencies
+- [WIP] Compare two commits
 
 ## 🚀 Installation
 Via [Composer](https://getcomposer.org/) global require command
@@ -31,9 +40,10 @@ whatsdiff
 Pull requests are welcome! Here are some ideas to get you started:
 - [x] Analyse composer.lock
 - [x] Find releases through packagist.com
+- [x] Analyse package-json.lock (javascript)
+- [ ] Make a nice TUI (WIP on [#1](https://github.com/SRWieZ/whatsdiff/pull/1))
 - [ ] Retrieve changelog with Github API
-- [ ] Make a nice TUI
-- [ ] Analyse package-json.lock / yarn.lock (javascript)
+- [ ] Publish on NPM
 - [ ] Analyse gradle dependencies (android)
 - [ ] Analyse cocoapods dependencies (iOS)
 - [ ] Analyse pip dependencies (python)
