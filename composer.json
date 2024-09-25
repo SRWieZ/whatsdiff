@@ -19,13 +19,16 @@
     "laravel/prompts": "^0.1.0|^0.2.0",
     "illuminate/collections": "^10.0|^11.0",
     "composer/semver": "^3.4",
-    "saloonphp/saloon": "^3.10"
+    "saloonphp/saloon": "^3.10",
+    "joetannenbaum/chewie": "^0.1.5"
   },
   "require-dev": {
     "pestphp/pest": "^2.24",
     "laravel/pint": "^1.13",
     "humbug/box": "^4.3",
-    "nunomaduro/collision": "^7.0|^8.0"
+    "nunomaduro/collision": "^7.0|^8.0",
+    "phpstan/phpstan": "^1.12",
+    "spatie/ray": "^1.41"
   },
   "config": {
     "allow-plugins": {
@@ -51,16 +54,16 @@
     ],
     "qa": [
       "@composer pint",
+      "@composer phpstan",
       "@composer test"
     ],
-    "box": [
-      "./vendor/bin/box"
+    "static": [
+      "@composer pint",
+      "@composer phpstan"
     ],
-    "pint": [
-      "./vendor/bin/pint --preset psr12"
-    ],
-    "test": [
-      "./vendor/bin/pest"
-    ]
+    "box": "./vendor/bin/box",
+    "pint": "./vendor/bin/pint --preset psr12",
+    "phpstan": "./vendor/bin/phpstan analyse",
+    "test": "./vendor/bin/pest"
   }
 }
