@@ -1,0 +1,7 @@
+parameters:
+  treatPhpDocTypesAsCertain: false
+  paths:
+    - src
+  level: 5
+  ignoreErrors:
+

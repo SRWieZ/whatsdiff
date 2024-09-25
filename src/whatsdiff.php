@@ -1,6 +1,7 @@
 <?php
 
 
+use App\Outputs\TerminalUI;
 use Composer\Semver\Comparator;
 
 if (! class_exists('\Composer\InstalledVersions')) {
@@ -45,8 +46,9 @@ function showHelp(): void
     echo 'Options:'.PHP_EOL;
     echo '  -V, --version         Show app versions'.PHP_EOL;
     echo '      --ignore-last     Ignore last uncommited changes'.PHP_EOL;
+    // echo '      --output={mode}   Output mode: tui,console,json (default: tui)'.PHP_EOL;
     // echo '      --back={n}        Number of times to go back in time'.PHP_EOL;
-    // echo '      --json            Return a json result'.PHP_EOL;
+    // echo '      --json            Shortcut for --output=json'.PHP_EOL;
     echo PHP_EOL;
     echo 'Commands:'.PHP_EOL;
     echo '  help                  Show this help information'.PHP_EOL;
@@ -149,6 +151,7 @@ function diffComposerLockPackages($last, $previous)
     $diff = collect($previous)
         ->mapWithKeys(fn ($version, $name) => [
             $name => [
+                'name' => $name,
                 'from' => $version,
                 'to'   => $last[$name] ?? null,
             ]
@@ -158,6 +161,7 @@ function diffComposerLockPackages($last, $previous)
         ->diffKeys($previous)
         ->mapWithKeys(fn ($version, $name) => [
             $name => [
+                'name' => $name,
                 'from' => null,
                 'to'   => $version,
             ]
@@ -315,6 +319,7 @@ if ($command === 'help' || $options['show_version']) {
 }
 
 
+
 $filename = 'composer.lock';
 
 $commitLogs = gitLogOfFile($filename);
@@ -341,7 +346,11 @@ if (! $recentlyUpdated && empty($commitLogs)) {
 
     [$last, $previous] = getFilesToCompare($filename, $lastHash, $previousHash);
 
-    printDiff(diffComposerLockPackages($last, $previous));
+    $data = diffComposerLockPackages($last, $previous);
+    printDiff($data);
+    (new TerminalUI($data))->prompt();
+
+    exit(0);
 }
 
 
