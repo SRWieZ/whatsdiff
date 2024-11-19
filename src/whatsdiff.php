@@ -1,6 +1,5 @@
 <?php
 
-
 use Composer\Semver\Comparator;
 
 if (! class_exists('\Composer\InstalledVersions')) {
@@ -8,7 +7,7 @@ if (! class_exists('\Composer\InstalledVersions')) {
 }
 
 if (class_exists('\NunoMaduro\Collision\Provider')) {
-    (new \NunoMaduro\Collision\Provider())->register();
+    (new \NunoMaduro\Collision\Provider)->register();
 } else {
     error_reporting(0);
     // TODO : register a function to catch exception and show nice exception
@@ -60,9 +59,24 @@ function showHelp(): void
     echo php_sapi_name() == 'micro' ? '  Compiled with https://github.com/crazywhalecc/static-php-cli'.PHP_EOL : '';
 }
 
-function gitLogOfFile(string $filename): array
+function gitLogOfFile(string $filename, string $beforeHash = ''): array
 {
-    $output = shell_exec("git log --pretty=format:'%h' -- '$filename'"); // TODO: escape filename
+    $cmd = 'git log '.($beforeHash)." --pretty=format:'%h' -- '$filename'"; // TODO: escape filename
+
+    $output = shell_exec($cmd);
+
+    if (is_null($output)) {
+        return [];
+    }
+
+    return explode("\n", $output);
+}
+
+function gitLogOfFiles(array $filenames): array
+{
+    $filesString = implode('\' \'', array_map('escapeshellarg', $filenames));
+
+    $output = shell_exec("git log --pretty=format:'%h' -- '$filesString'");
 
     if (is_null($output)) {
         return [];
@@ -74,7 +88,7 @@ function gitLogOfFile(string $filename): array
 function isFileHasBeenRecentlyUpdated(string $filename): bool
 {
     // Execute the command and get the output
-    $output = shell_exec("git status --porcelain");
+    $output = shell_exec('git status --porcelain');
 
     if (is_null($output)) {
         return false;
@@ -92,7 +106,7 @@ function isFileHasBeenRecentlyUpdated(string $filename): bool
         'AM', // Added and modified
         'M', // Modified
         'A', // Added
-        '??' // Untracked
+        '??', // Untracked
     ]);
 }
 
@@ -132,7 +146,7 @@ function extractNpmjsPackagesVersions($composerLockContent): array
 {
     return collect($composerLockContent['packages'] ?? [])
         ->mapWithKeys(fn ($package, $key) => [
-            str_replace('node_modules/', '', $key) => $package['version']
+            str_replace('node_modules/', '', $key) => $package['version'],
         ])
         ->filter(fn ($version, $name) => ! empty($name))
         ->toArray();
@@ -150,8 +164,8 @@ function diffComposerLockPackages($last, $previous)
         ->mapWithKeys(fn ($version, $name) => [
             $name => [
                 'from' => $version,
-                'to'   => $last[$name] ?? null,
-            ]
+                'to' => $last[$name] ?? null,
+            ],
         ]);
 
     $newPackages = collect($last)
@@ -159,10 +173,9 @@ function diffComposerLockPackages($last, $previous)
         ->mapWithKeys(fn ($version, $name) => [
             $name => [
                 'from' => null,
-                'to'   => $version,
-            ]
+                'to' => $version,
+            ],
         ]);
-
 
     return $diff->merge($newPackages)
         ->filter(fn ($el) => $el['from'] !== $el['to'])
@@ -182,8 +195,8 @@ function diffPackageLockPackages($last, $previous)
         ->mapWithKeys(fn ($version, $name) => [
             $name => [
                 'from' => $version,
-                'to'   => $last[$name] ?? null,
-            ]
+                'to' => $last[$name] ?? null,
+            ],
         ]);
 
     $newPackages = collect($last)
@@ -191,10 +204,9 @@ function diffPackageLockPackages($last, $previous)
         ->mapWithKeys(fn ($version, $name) => [
             $name => [
                 'from' => null,
-                'to'   => $version,
-            ]
+                'to' => $version,
+            ],
         ]);
-
 
     return $diff->merge($newPackages)
         ->filter(fn ($el) => $el['from'] !== $el['to'])
@@ -229,7 +241,7 @@ function printDiff(array $diff, $type = 'composer'): void
                 echo "\033[36m↑\033[0m ".str_pad($package, $maxStrLen).' : '.str_pad(
                     $infos['from'],
                     $maxStrLenVersion
-                ).' => '.$infos['to'].($nbReleases > 1 ? " ($nbReleases releases)" : "").PHP_EOL;
+                ).' => '.$infos['to'].($nbReleases > 1 ? " ($nbReleases releases)" : '').PHP_EOL;
             } else {
                 echo "\033[33m↓\033[0m ".str_pad($package, $maxStrLen).' : '.str_pad(
                     $infos['from'],
@@ -276,7 +288,6 @@ function getComposerReleases(string $package, string $from, string $to): array
     return $returnVersions;
 }
 
-
 function getNpmjsReleases(string $package, string $from, string $to): array
 {
     $packageInfos = file_get_contents('https://registry.npmjs.org/'.urlencode($package));
@@ -314,65 +325,101 @@ if ($command === 'help' || $options['show_version']) {
     exit;
 }
 
+$dependency_files = [
+    'composer' => [
+        'file' => 'composer.lock',
+        'type' => 'composer',
+        'hasBeenRecentlyUpdated' => false,
+        'hasCommitLogs' => false,
+        'commitLogs' => [],
+    ],
+    'npmjs' => [
+        'file' => 'package-lock.json',
+        'type' => 'npmjs',
+        'hasBeenRecentlyUpdated' => false,
+        'hasCommitLogs' => false,
+        'commitLogs' => [],
+    ],
+];
 
-$filename = 'composer.lock';
+foreach ($dependency_files as $type => $file) {
+    $dependency_files[$type]['hasBeenRecentlyUpdated'] =
+        ! $options['ignore_last'] && isFileHasBeenRecentlyUpdated($file['file']);
 
-$commitLogs = gitLogOfFile($filename);
-
-$recentlyUpdated = ! $options['ignore_last'] && isFileHasBeenRecentlyUpdated($filename);
-
-if (! $recentlyUpdated && empty($commitLogs)) {
-    echo 'No commit logs found for '.$filename.PHP_EOL;
-} else {
-
-    if ($recentlyUpdated) {
-        echo 'Uncommited changes detected on '.$filename.PHP_EOL;
-    }
-
-    [$lastHash, $previousHash] = getCommitHashToCompare($commitLogs, $recentlyUpdated);
-
-    if ($previousHash === null) {
-        echo "No previous commit found, $filename has just been created".PHP_EOL;
-    } else {
-        echo $filename.' changed between '.$previousHash.' and '.($lastHash ?? 'uncommited changes').PHP_EOL;
-    }
-
-    echo PHP_EOL;
-
-    [$last, $previous] = getFilesToCompare($filename, $lastHash, $previousHash);
-
-    printDiff(diffComposerLockPackages($last, $previous));
+    $commitLogs = gitLogOfFile($file['file']);
+    $dependency_files[$type]['hasCommitLogs'] = ! empty($commitLogs);
+    $dependency_files[$type]['commitLogs'] = $commitLogs;
 }
 
+$dependency_files = collect($dependency_files);
 
-echo PHP_EOL.'----------'.PHP_EOL.PHP_EOL;
+// At least one recent change
+$recentlyUpdated = $dependency_files->contains(fn ($file) => $file['hasBeenRecentlyUpdated'], true);
+$hasCommitLogs = $dependency_files->contains(fn ($file) => $file['hasCommitLogs'], true);
 
+// Case 1 : No recent changes and no commit logs
+if (! $recentlyUpdated && ! $hasCommitLogs) {
+    echo 'No recent changes and no commit logs found for '.$dependency_files->pluck('file')->implode(', ').PHP_EOL;
+    exit(0);
+}
 
-$filename = 'package-lock.json';
+if ($recentlyUpdated) {
+    // Case 2 : At least one recent change in one of the files
+    echo 'Uncommited changes detected on '.$dependency_files->where(
+        'hasBeenRecentlyUpdated',
+        true
+    )->pluck('file')->implode(', ').PHP_EOL;
+    echo PHP_EOL;
 
-$commitLogs = gitLogOfFile($filename);
+    $filenames = $dependency_files->where('hasBeenRecentlyUpdated', true)->pluck('file', 'type')->toArray();
 
-$recentlyUpdated = ! $options['ignore_last'] && isFileHasBeenRecentlyUpdated($filename);
-
-if (! $recentlyUpdated && empty($commitLogs)) {
-    echo 'No commit logs found for '.$filename.PHP_EOL;
+    // Commit logs of all files that have been recently updated
+    $commitLogs = gitLogOfFiles($filenames);
 } else {
-    if ($recentlyUpdated) {
-        echo 'Uncommited changes detected on '.$filename.PHP_EOL;
-    }
+    // Case 3 : No recent changes but at least one commit log
+    $filenames = $dependency_files->where('hasCommitLogs', true)->pluck('file', 'type')->toArray();
+    $commitLogs = gitLogOfFiles($filenames);
+}
 
-    [$lastHash, $previousHash] = getCommitHashToCompare($commitLogs, $recentlyUpdated);
+// Only compare the last change
+[$lastHash, $previousHash] = getCommitHashToCompare($commitLogs, $recentlyUpdated);
 
-    if ($previousHash === null) {
-        echo "No previous commit found, $filename has just been created".PHP_EOL;
+foreach ($filenames as $type => $filename) {
+
+    $fileCommitLogs = $dependency_files->get($type)['commitLogs'];
+    $existInPreviousHash = collect($fileCommitLogs)->contains($previousHash);
+
+    $previousHashOrNot = $existInPreviousHash ? $previousHash : null;
+    [$last, $previous] = getFilesToCompare($filename, $lastHash, $previousHashOrNot);
+
+    if ($previousHashOrNot === null) {
+        //Determine if it was created at $latestHash or it was untouched at $previousHash
+
+        $commitPriorToLast = $previousHash ? gitLogOfFile($filename, $previousHash) : [];
+        $isNew = count($commitPriorToLast) === 0;
+
+        if ($isNew) {
+            echo $filename.' has just been created'.PHP_EOL;
+        } else {
+            echo $filename.' has been untouched since '.array_pop($commitPriorToLast).PHP_EOL;
+        }
+        echo PHP_EOL;
+    } elseif (empty($last) || empty($previous)) {
+        break;
     } else {
         echo $filename.' changed between '.$previousHash.' and '.($lastHash ?? 'uncommited changes').PHP_EOL;
+        echo PHP_EOL;
     }
 
-    [$last, $previous] = getFilesToCompare($filename, $lastHash, $previousHash);
+    if ($type === 'composer') {
+        $diff = diffComposerLockPackages($last, $previous);
+    } elseif ($type === 'npmjs') {
+        $diff = diffPackageLockPackages($last, $previous);
+    }
+
+    printDiff($diff, $type);
 
     echo PHP_EOL;
-    printDiff(diffPackageLockPackages($last, $previous), type: 'npmjs');
 }
 
 // getComposerReleases('laravel/framework', 'v11.19.0', 'v11.22.0');
@@ -380,4 +427,12 @@ if (! $recentlyUpdated && empty($commitLogs)) {
 // dump(getNpmjsReleases('alpinejs', '3.10.5', '3.14.1'));
 // dump(getNpmjsReleases('electron-to-chromium', '1.5.13', '1.5.25'));
 
+// $commitLogs = array_merge( ...$dependency_files
+//     ->where('hasBeenRecentlyUpdated', true)
+//     ->pluck('commitLogs')
+//     ->toArray());
+// $commitLogs = array_merge( ...$dependency_files
+//     ->where('hasCommitLogs', true)
+//     ->pluck('commitLogs')
+//     ->toArray());
 exit(0);
