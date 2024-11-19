@@ -390,26 +390,32 @@ foreach ($filenames as $type => $filename) {
     $existInPreviousHash = collect($fileCommitLogs)->contains($previousHash);
 
     $previousHashOrNot = $existInPreviousHash ? $previousHash : null;
-    [$last, $previous] = getFilesToCompare($filename, $lastHash, $previousHashOrNot);
 
+    $isNew = false;
     if ($previousHashOrNot === null) {
         //Determine if it was created at $latestHash or it was untouched at $previousHash
 
         $commitPriorToLast = $previousHash ? gitLogOfFile($filename, $previousHash) : [];
         $isNew = count($commitPriorToLast) === 0;
 
-        if ($isNew) {
-            echo $filename.' has just been created'.PHP_EOL;
-        } else {
-            echo $filename.' has been untouched since '.array_pop($commitPriorToLast).PHP_EOL;
+        if (! $isNew) {
+            // echo $filename.' has been untouched since '.array_pop($commitPriorToLast).PHP_EOL;
+            break;
         }
-        echo PHP_EOL;
-    } elseif (empty($last) || empty($previous)) {
+    }
+
+    [$last, $previous] = getFilesToCompare($filename, $lastHash, $previousHashOrNot);
+
+    if (empty($last)) {
         break;
+    }
+
+    if ($isNew) {
+        echo $filename.($lastHash ? ' created at '.$lastHash : ' created').PHP_EOL;
     } else {
         echo $filename.' changed between '.$previousHash.' and '.($lastHash ?? 'uncommited changes').PHP_EOL;
-        echo PHP_EOL;
     }
+    echo PHP_EOL;
 
     if ($type === 'composer') {
         $diff = diffComposerLockPackages($last, $previous);
