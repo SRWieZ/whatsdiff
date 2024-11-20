@@ -57,7 +57,7 @@
       "./vendor/bin/box"
     ],
     "pint": [
-      "./vendor/bin/pint --preset psr12"
+      "./vendor/bin/pint"
     ],
     "test": [
       "./vendor/bin/pest"
