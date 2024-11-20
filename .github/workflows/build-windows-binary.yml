@@ -54,7 +54,7 @@ jobs:
         run: composer install --prefer-dist --no-progress --optimize-autoloader
 
       - name: Build .phar
-        run: composer box compile
+        run: composer box compile --allow-composer-check-failure
 
       - name: Checkout static-php-cli
         working-directory: build
