@@ -25,6 +25,12 @@ jobs:
           fetch-depth: 0
           fetch-tags: true
 
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ env.COMPILE_PHP_VERSION }}
+          tools: composer:v2
+
       - name: Cache build dependencies
         uses: actions/cache@v4
         with:
