@@ -24,7 +24,7 @@
   "require-dev": {
     "pestphp/pest": "^2.24",
     "laravel/pint": "^1.13",
-    "humbug/box": "^4.3",
+    "humbug/box": "^4.6",
     "nunomaduro/collision": "^7.0|^8.0"
   },
   "config": {
