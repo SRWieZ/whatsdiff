@@ -417,6 +417,7 @@ foreach ($filenames as $type => $filename) {
     }
     echo PHP_EOL;
 
+    $diff = [];
     if ($type === 'composer') {
         $diff = diffComposerLockPackages($last, $previous);
     } elseif ($type === 'npmjs') {
