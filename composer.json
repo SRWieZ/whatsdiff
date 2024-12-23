@@ -22,7 +22,7 @@
     "saloonphp/saloon": "^3.10"
   },
   "require-dev": {
-    "pestphp/pest": "^2.24",
+    "pestphp/pest": "^2.0|^3.0",
     "laravel/pint": "^1.13",
     "humbug/box": "^4.0",
     "nunomaduro/collision": "^7.0|^8.0",
