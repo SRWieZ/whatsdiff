@@ -57,7 +57,7 @@ jobs:
         shell: bash
         env:
           BOX_REQUIREMENT_CHECKER: 0
-        run: ./vendor/bin/box compile
+        run: ./vendor/bin/box compile --allow-composer-check-failure --composer-bin "$(which composer)"
 
       - name: Checkout static-php-cli
         working-directory: build
