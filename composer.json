@@ -16,7 +16,7 @@
     "php": "^8.1",
     "ext-dom": "*",
     "composer-runtime-api": "^2.2",
-    "laravel/prompts": "^0.1.0|^0.2.0",
+    "laravel/prompts": "^0.1|^0.2|^0.3",
     "illuminate/collections": "^10.0|^11.0",
     "composer/semver": "^3.4",
     "saloonphp/saloon": "^3.10"
@@ -25,7 +25,8 @@
     "pestphp/pest": "^2.24",
     "laravel/pint": "^1.13",
     "humbug/box": "^4.6",
-    "nunomaduro/collision": "^7.0|^8.0"
+    "nunomaduro/collision": "^7.0|^8.0",
+    "phpstan/phpstan": "^2.0"
   },
   "config": {
     "allow-plugins": {
@@ -51,16 +52,12 @@
     ],
     "qa": [
       "@composer pint",
+      "@composer static",
       "@composer test"
     ],
-    "box": [
-      "./vendor/bin/box"
-    ],
-    "pint": [
-      "./vendor/bin/pint"
-    ],
-    "test": [
-      "./vendor/bin/pest"
-    ]
+    "box": "./vendor/bin/box",
+    "pint": "./vendor/bin/pint",
+    "static": "./vendor/bin/phpstan analyse",
+    "test": "./vendor/bin/pest"
   }
 }
