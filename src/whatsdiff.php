@@ -125,8 +125,6 @@ function isFileHasBeenRecentlyUpdated(string $filename): bool
 
 function getFileContentOfCommit(string $filename, string $commitHash): string
 {
-    dump("git show $commitHash:'$filename'");
-
     return shell_exec("git show $commitHash:$filename");
 }
 
