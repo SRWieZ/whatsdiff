@@ -54,6 +54,7 @@ jobs:
         run: composer update --prefer-dist --no-progress --optimize-autoloader
 
       - name: Build .phar
+        shell: bash
         env:
           BOX_REQUIREMENT_CHECKER: 0
         run: ./vendor/bin/box compile
