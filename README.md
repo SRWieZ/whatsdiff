@@ -38,10 +38,8 @@ whatsdiff
 
 ## 📋 Roadmap
 Pull requests are welcome! Here are some ideas to get you started:
-- [x] Analyse composer.lock
-- [x] Find releases through packagist.com
-- [x] Analyse package-json.lock (javascript)
 - [ ] Make a nice TUI (WIP on [#1](https://github.com/SRWieZ/whatsdiff/pull/1))
+- [ ] Output format (json, markdown, no-ansi)
 - [ ] Retrieve changelog with Github API
 - [ ] Publish on NPM
 - [ ] Analyse gradle dependencies (android)
