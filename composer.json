@@ -24,7 +24,7 @@
   "require-dev": {
     "pestphp/pest": "^2.24",
     "laravel/pint": "^1.13",
-    "humbug/box": "^4.6",
+    "humbug/box": "^4.0",
     "nunomaduro/collision": "^7.0|^8.0",
     "phpstan/phpstan": "^2.0"
   },
