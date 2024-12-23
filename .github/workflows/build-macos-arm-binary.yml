@@ -53,8 +53,8 @@ jobs:
           key: ${{ runner.os }}-composer-${{ hashFiles('**/composer.lock') }}
           restore-keys: ${{ runner.os }}-composer-
 
-      - name: Composer install
-        run: composer install --prefer-dist --no-progress --optimize-autoloader
+      - name: Composer update
+        run: composer update --prefer-dist --no-progress --optimize-autoloader
 
       - name: Build Binary
         run: ./build.sh --name "${{ env.BINARY_NAME }}"
