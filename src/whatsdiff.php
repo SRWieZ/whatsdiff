@@ -61,9 +61,11 @@ function showHelp(): void
 
 function gitLogOfFile(string $filename, string $beforeHash = ''): array
 {
+    global $git_root;
+
     $cmd = 'git log '.($beforeHash)." --pretty=format:'%h' -- '$filename'"; // TODO: escape filename
 
-    $output = shell_exec($cmd);
+    $output = shell_exec_cwd($cmd, $git_root);
 
     if (is_null($output)) {
         return [];
@@ -74,9 +76,11 @@ function gitLogOfFile(string $filename, string $beforeHash = ''): array
 
 function gitLogOfFiles(array $filenames): array
 {
+    global $git_root;
+
     $filesString = implode('\' \'', array_map('escapeshellarg', $filenames));
 
-    $output = shell_exec("git log --pretty=format:'%h' -- '$filesString'");
+    $output = shell_exec_cwd("git log --pretty=format:'%h' -- '$filesString'", $git_root);
 
     if (is_null($output)) {
         return [];
@@ -91,6 +95,10 @@ function isFileHasBeenRecentlyUpdated(string $filename): bool
     $output = shell_exec('git status --porcelain');
 
     if (is_null($output)) {
+        if (file_exists(basename($filename))) {
+            return true;
+        }
+
         return false;
     }
 
@@ -100,6 +108,11 @@ function isFileHasBeenRecentlyUpdated(string $filename): bool
 
             return [$line[1] => $line[0]];
         });
+
+    // If the file exists and is not in the list of untracked files
+    if (file_exists(basename($filename)) && ! $status->has($filename)) {
+        return true;
+    }
 
     return in_array($status->get($filename), [
         // todo: read the docs
@@ -112,6 +125,8 @@ function isFileHasBeenRecentlyUpdated(string $filename): bool
 
 function getFileContentOfCommit(string $filename, string $commitHash): string
 {
+    dump("git show $commitHash:'$filename'");
+
     return shell_exec("git show $commitHash:$filename");
 }
 
@@ -128,8 +143,13 @@ function getCommitHashToCompare(array $commitLogs, bool $recentlyUpdated): array
 
 function getFilesToCompare(string $filename, ?string $lastHash, ?string $previousHash): array
 {
-    $last = $lastHash ? getFileContentOfCommit($filename, $lastHash) : file_get_contents($filename);
-    $previous = $previousHash ? getFileContentOfCommit($filename, $previousHash) : null;
+    $last = $lastHash
+        ? getFileContentOfCommit($filename, $lastHash)
+        : file_get_contents(basename($filename));
+
+    $previous = $previousHash
+        ? getFileContentOfCommit($filename, $previousHash)
+        : null;
 
     return [$last, $previous];
 }
@@ -320,6 +340,16 @@ function getNpmjsReleases(string $package, string $from, string $to): array
     return $returnVersions;
 }
 
+function shell_exec_cwd(string $cmd, string $cwd): string|false|null
+{
+    $oldCwd = getcwd();
+    chdir($cwd);
+    $output = shell_exec($cmd);
+    chdir($oldCwd);
+
+    return $output;
+}
+
 if ($command === 'help' || $options['show_version']) {
     showHelp();
     exit;
@@ -341,6 +371,19 @@ $dependency_files = [
         'commitLogs' => [],
     ],
 ];
+
+$git_root = rtrim(trim(shell_exec('git rev-parse --show-toplevel')), DIRECTORY_SEPARATOR);
+$current_dir = rtrim(getcwd(), DIRECTORY_SEPARATOR);
+$relative_current_dir = ltrim(str_replace($git_root, '', $current_dir), DIRECTORY_SEPARATOR);
+
+// Relative to current directory and git root
+foreach ($dependency_files as $key => $file) {
+    // If the file exist in the current directory
+    if (! empty($relative_current_dir) && file_exists($file['file'])) {
+        // relative path form the git root
+        $dependency_files[$key]['file'] = $relative_current_dir.DIRECTORY_SEPARATOR.$file['file'];
+    }
+}
 
 foreach ($dependency_files as $type => $file) {
     $dependency_files[$type]['hasBeenRecentlyUpdated'] =
@@ -374,12 +417,12 @@ if ($recentlyUpdated) {
     $filenames = $dependency_files->where('hasBeenRecentlyUpdated', true)->pluck('file', 'type')->toArray();
 
     // Commit logs of all files that have been recently updated
-    $commitLogs = gitLogOfFiles($filenames);
 } else {
     // Case 3 : No recent changes but at least one commit log
     $filenames = $dependency_files->where('hasCommitLogs', true)->pluck('file', 'type')->toArray();
-    $commitLogs = gitLogOfFiles($filenames);
 }
+
+$commitLogs = gitLogOfFiles($filenames);
 
 // Only compare the last change
 [$lastHash, $previousHash] = getCommitHashToCompare($commitLogs, $recentlyUpdated);
