@@ -137,7 +137,7 @@ function getFilesToCompare(string $filename, ?string $lastHash, ?string $previou
 function extractComposerPackagesVersions($composerLockContent): array
 {
     return collect($composerLockContent['packages'] ?? [])
-        ->merge($composerLockContent['packages-dev'])
+        ->merge($composerLockContent['packages-dev'] ?? [])
         ->mapWithKeys(fn ($package) => [$package['name'] => $package['version']])
         ->toArray();
 }
