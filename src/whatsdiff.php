@@ -91,16 +91,10 @@ function gitLogOfFiles(array $filenames): array
 
 function isFileHasBeenRecentlyUpdated(string $filename): bool
 {
+    global $relative_current_dir;
+
     // Execute the command and get the output
     $output = shell_exec('git status --porcelain');
-
-    if (is_null($output)) {
-        if (file_exists(basename($filename))) {
-            return true;
-        }
-
-        return false;
-    }
 
     $status = collect(explode("\n", trim($output)))
         ->mapWithKeys(function ($line) {
@@ -110,8 +104,10 @@ function isFileHasBeenRecentlyUpdated(string $filename): bool
         });
 
     // If the file exists and is not in the list of untracked files
-    if (file_exists(basename($filename)) && ! $status->has($filename)) {
-        return true;
+    // because git status --porcelain does not return them
+    // it only returns "directory/ ??"
+    if (! empty($relative_current_dir) && file_exists($filename) && ! $status->has($filename)) {
+        return true; // Created
     }
 
     return in_array($status->get($filename), [
