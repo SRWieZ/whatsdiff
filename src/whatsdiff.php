@@ -97,6 +97,7 @@ function isFileHasBeenRecentlyUpdated(string $filename): bool
     $output = shell_exec('git status --porcelain');
 
     $status = collect(explode("\n", trim($output)))
+        ->filter()
         ->mapWithKeys(function ($line) {
             $line = array_values(array_filter(explode(' ', $line)));
 
