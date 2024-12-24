@@ -156,9 +156,10 @@ function extractComposerPackagesVersions($composerLockContent): array
         ->toArray();
 }
 
-function extractNpmjsPackagesVersions($composerLockContent): array
+function extractNpmjsPackagesVersions($packageLockContent): array
 {
-    return collect($composerLockContent['packages'] ?? [])
+    return collect($packageLockContent['packages'] ?? [])
+        ->filter(fn ($package, $key) => ! empty($key) && ! empty($package['version'])) // package-lock.json is weird
         ->mapWithKeys(fn ($package, $key) => [
             str_replace('node_modules/', '', $key) => $package['version'],
         ])
@@ -231,7 +232,7 @@ function diffPackageLockPackages($last, $previous)
 function printDiff(array $diff, $type = 'composer'): void
 {
     if (! count($diff)) {
-        echo ' → No changes detected'.PHP_EOL;
+        echo ' → No dependencies changes detected'.PHP_EOL;
 
         return;
     }
