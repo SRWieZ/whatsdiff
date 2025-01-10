@@ -96,7 +96,7 @@ function isFileHasBeenRecentlyUpdated(string $filename): bool
     // Execute the command and get the output
     $output = shell_exec('git status --porcelain');
 
-    $status = collect(explode("\n", trim($output?: '')))
+    $status = collect(explode("\n", trim($output ?: '')))
         ->filter()
         ->mapWithKeys(function ($line) {
             $line = array_values(array_filter(explode(' ', $line)));
@@ -420,13 +420,22 @@ if ($recentlyUpdated) {
 
 $commitLogs = gitLogOfFiles($filenames);
 
-// Only compare the last change
-[$lastHash, $previousHash] = getCommitHashToCompare($commitLogs, $recentlyUpdated);
+// dump(array_keys($filenames));
 
 foreach ($filenames as $type => $filename) {
 
-    $fileCommitLogs = $dependency_files->get($type)['commitLogs'];
-    $existInPreviousHash = collect($fileCommitLogs)->contains($previousHash);
+    // dump($recentlyUpdated);
+    if ($recentlyUpdated) {
+        $commitLogsToCompare = $dependency_files->get($type)['commitLogs'];
+    } else {
+        $commitLogsToCompare = $commitLogs;
+    }
+
+    [$lastHash, $previousHash] = getCommitHashToCompare($commitLogsToCompare, $recentlyUpdated);
+
+    // dump($type, $lastHash, $previousHash);
+
+    $existInPreviousHash = collect($commitLogsToCompare)->contains($previousHash);
 
     $previousHashOrNot = $existInPreviousHash ? $previousHash : null;
 
@@ -438,21 +447,22 @@ foreach ($filenames as $type => $filename) {
         $isNew = count($commitPriorToLast) === 0;
 
         if (! $isNew) {
-            // echo $filename.' has been untouched since '.array_pop($commitPriorToLast).PHP_EOL;
-            break;
+            echo $filename.' has been untouched since '.array_pop($commitPriorToLast).PHP_EOL;
+
+            continue;
         }
     }
 
     [$last, $previous] = getFilesToCompare($filename, $lastHash, $previousHashOrNot);
 
     if (empty($last)) {
-        break;
+        continue;
     }
 
     if ($isNew) {
         echo $filename.($lastHash ? ' created at '.$lastHash : ' created').PHP_EOL;
     } else {
-        echo $filename.' changed between '.$previousHash.' and '.($lastHash ?? 'uncommited changes').PHP_EOL;
+        echo $filename.' between '.$previousHash.' and '.($lastHash ?? 'uncommited changes').PHP_EOL;
     }
     echo PHP_EOL;
 
