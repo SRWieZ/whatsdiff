@@ -17,7 +17,7 @@
     "ext-dom": "*",
     "composer-runtime-api": "^2.2",
     "laravel/prompts": "^0.1|^0.2|^0.3",
-    "illuminate/collections": "^10.0|^11.0",
+    "illuminate/collections": "^10.0|^11.0|^12.0",
     "composer/semver": "^3.4",
     "saloonphp/saloon": "^3.10"
   },
@@ -38,7 +38,7 @@
       "App\\": "src/"
     }
   },
-  "minimum-stability": "stable",
+  "minimum-stability": "dev",
   "prefer-stable": true,
   "autoload-dev": {
     "psr-4": {
