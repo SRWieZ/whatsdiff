@@ -479,6 +479,7 @@ foreach ($filenames as $type => $filename) {
     }
 
     (new TerminalUI($diff))->prompt();
+
     printDiff($diff, $type);
 
     echo PHP_EOL;
