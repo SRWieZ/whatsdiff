@@ -30,7 +30,7 @@ class TerminalUI extends Prompt
             ->listenForQuit()
             ->onUp(fn () => $this->previous())
             ->onDown(fn () => $this->next())
-            ->on(Key::ENTER,fn () => $this->selected = $this->cursor)
+            ->on(Key::ENTER, fn () => $this->selected = $this->cursor)
             ->listen();
     }
 

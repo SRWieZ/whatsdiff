@@ -23,8 +23,8 @@ class TerminalUIRenderer extends Renderer
 
         // Sidebar
         $sidebar = collect($prompt->packages)
-            ->map(fn($package) => ' '.$package['name'].' ')
-            ->map(fn($name, $i) => match ($i) {
+            ->map(fn ($package) => ' '.$package['name'].' ')
+            ->map(fn ($name, $i) => match ($i) {
                 $prompt->selected => $this->bgGreen($name),
                 $prompt->cursor => $this->bgMagenta($name),
                 default => $name,

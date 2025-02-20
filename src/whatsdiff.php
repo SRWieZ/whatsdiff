@@ -9,7 +9,7 @@ if (! class_exists('\Composer\InstalledVersions')) {
 }
 
 if (class_exists('\NunoMaduro\Collision\Provider')) {
-    (new \NunoMaduro\Collision\Provider)->register();
+    (new \NunoMaduro\Collision\Provider())->register();
 } else {
     error_reporting(0);
     // TODO : register a function to catch exception and show nice exception
