@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Apis\Github;
+namespace Whatsdiff\Apis\Github;
 
 use Saloon\Http\Connector;
 

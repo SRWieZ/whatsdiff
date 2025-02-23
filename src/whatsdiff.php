@@ -1,7 +1,7 @@
 <?php
 
 
-use App\Outputs\TerminalUI;
+use Whatsdiff\Outputs\TerminalUI;
 use Composer\Semver\Comparator;
 
 if (! class_exists('\Composer\InstalledVersions')) {

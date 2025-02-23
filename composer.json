@@ -38,7 +38,7 @@
   },
   "autoload": {
     "psr-4": {
-      "App\\": "src/"
+      "Whatsdiff\\": "src/"
     }
   },
   "minimum-stability": "dev",
