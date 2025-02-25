@@ -1,15 +1,12 @@
 <?php
 
-namespace Whatsdiff\Outputs;
+namespace Whatsdiff\Outputs\Tui;
 
 use Chewie\Concerns\CreatesAnAltScreen;
 use Chewie\Concerns\RegistersThemes;
 use Chewie\Input\KeyPressListener;
 use Laravel\Prompts\Key;
 use Laravel\Prompts\Prompt;
-use Whatsdiff\Concerns\MultipleScrolling;
-use Whatsdiff\Parsers\MarkdownToConsole;
-use Whatsdiff\Renderers\TerminalUIRenderer;
 
 class TerminalUI extends Prompt
 {

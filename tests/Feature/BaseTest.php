@@ -8,4 +8,4 @@ test('doesnt fail', function () {
     }
 
     expect($exitCode)->toBe(0);
-})->skip('Yeah that wont work with an interactive UI ^^');
+});

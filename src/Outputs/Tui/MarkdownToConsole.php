@@ -1,6 +1,6 @@
 <?php
 
-namespace Whatsdiff\Parsers;
+namespace Whatsdiff\Outputs\Tui;
 
 use Laravel\Prompts\Concerns\Colors;
 

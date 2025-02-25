@@ -1,8 +1,8 @@
 <?php
 
 
-use Whatsdiff\Outputs\TerminalUI;
 use Composer\Semver\Comparator;
+use Whatsdiff\Outputs\Tui\TerminalUI;
 
 if (! class_exists('\Composer\InstalledVersions')) {
     require __DIR__.'/../vendor/autoload.php';
@@ -478,7 +478,7 @@ foreach ($filenames as $type => $filename) {
         $diff = diffPackageLockPackages($last, $previous);
     }
 
-    (new TerminalUI($diff))->prompt();
+    // (new TerminalUI($diff))->prompt();
 
     printDiff($diff, $type);
 

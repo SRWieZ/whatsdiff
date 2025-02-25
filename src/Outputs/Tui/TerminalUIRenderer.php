@@ -1,6 +1,6 @@
 <?php
 
-namespace Whatsdiff\Renderers;
+namespace Whatsdiff\Outputs\Tui;
 
 use Chewie\Art;
 use Chewie\Concerns\Aligns;
@@ -12,7 +12,6 @@ use Laravel\Prompts\Themes\Contracts\Scrolling;
 use Laravel\Prompts\Themes\Default\Concerns\DrawsScrollbars;
 use Laravel\Prompts\Themes\Default\Concerns\InteractsWithStrings;
 use Laravel\Prompts\Themes\Default\Renderer;
-use Whatsdiff\Outputs\TerminalUI;
 
 class TerminalUIRenderer extends Renderer implements Scrolling
 {
@@ -40,10 +39,10 @@ class TerminalUIRenderer extends Renderer implements Scrolling
 
                 return '';
             },
-            // width: 95,
-            // height: 25,
-            width: 10,
-            height: 4,
+            width: 95,
+            height: 25,
+            // width: 10,
+            // height: 4,
         );
 
         return $this;
