@@ -1,13 +1,15 @@
 <?php
 
+
 use Composer\Semver\Comparator;
+use Whatsdiff\Outputs\Tui\TerminalUI;
 
 if (! class_exists('\Composer\InstalledVersions')) {
     require __DIR__.'/../vendor/autoload.php';
 }
 
 if (class_exists('\NunoMaduro\Collision\Provider')) {
-    (new \NunoMaduro\Collision\Provider)->register();
+    (new \NunoMaduro\Collision\Provider())->register();
 } else {
     error_reporting(0);
     // TODO : register a function to catch exception and show nice exception
@@ -44,8 +46,9 @@ function showHelp(): void
     echo 'Options:'.PHP_EOL;
     echo '  -V, --version         Show app versions'.PHP_EOL;
     echo '      --ignore-last     Ignore last uncommited changes'.PHP_EOL;
+    // echo '      --output={mode}   Output mode: tui,console,json (default: tui)'.PHP_EOL;
     // echo '      --back={n}        Number of times to go back in time'.PHP_EOL;
-    // echo '      --json            Return a json result'.PHP_EOL;
+    // echo '      --json            Shortcut for --output=json'.PHP_EOL;
     echo PHP_EOL;
     echo 'Commands:'.PHP_EOL;
     echo '  help                  Show this help information'.PHP_EOL;
@@ -179,6 +182,7 @@ function diffComposerLockPackages($last, $previous)
     $diff = collect($previous)
         ->mapWithKeys(fn ($version, $name) => [
             $name => [
+                'name' => $name,
                 'from' => $version,
                 'to' => $last[$name] ?? null,
             ],
@@ -188,6 +192,7 @@ function diffComposerLockPackages($last, $previous)
         ->diffKeys($previous)
         ->mapWithKeys(fn ($version, $name) => [
             $name => [
+                'name' => $name,
                 'from' => null,
                 'to' => $version,
             ],
@@ -472,6 +477,8 @@ foreach ($filenames as $type => $filename) {
     } elseif ($type === 'npmjs') {
         $diff = diffPackageLockPackages($last, $previous);
     }
+
+    // (new TerminalUI($diff))->prompt();
 
     printDiff($diff, $type);
 
