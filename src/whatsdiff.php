@@ -160,6 +160,51 @@ function extractComposerPackagesVersions($composerLockContent): array
         ->toArray();
 }
 
+function getVersionUrls(string $name, array $composerLock): string
+{
+    // dd($composerLock);
+    global $current_dir;
+
+    // Default packagist url
+    $url = 'https://repo.packagist.org/p2/'.$name.'.json';
+
+    $infos = collect($composerLock['packages'] ?? [])
+        ->merge($composerLock['packages-dev'] ?? [])
+        ->first(fn ($package) => $package['name'] === $name);
+
+    $authJson = collect(json_decode(
+        @file_get_contents($current_dir.DIRECTORY_SEPARATOR.'auth.json'),
+        associative: true
+    ));
+    $HOME = getenv('HOME') ?: getenv('USERPROFILE');
+    $globalAuthJson = collect(json_decode(
+        @file_get_contents($HOME.DIRECTORY_SEPARATOR.'.composer/auth.json'),
+        associative: true
+    ));
+
+    $authJson = $authJson->merge($globalAuthJson)->only('http-basic');
+    $distUrlDomain = parse_url($infos['dist']['url'] ?? '', PHP_URL_HOST);
+
+    $authJson = $authJson->toArray();
+
+    // TODO: check composer.json instead of ['dist']['url']  for custom repository
+    if (! empty($authJson['http-basic'][$distUrlDomain])) {
+        $url = implode('', [
+            'https://',
+            urlencode($authJson['http-basic'][$distUrlDomain]['username']),
+            ':',
+            urlencode($authJson['http-basic'][$distUrlDomain]['password']),
+            '@',
+            $distUrlDomain,
+            '/p2/'.$name.'.json',
+        ]);
+
+        // dd($url);
+    }
+
+    return $url;
+}
+
 function extractNpmjsPackagesVersions($packageLockContent): array
 {
     return collect($packageLockContent['packages'] ?? [])
@@ -171,20 +216,21 @@ function extractNpmjsPackagesVersions($packageLockContent): array
         ->toArray();
 }
 
-function diffComposerLockPackages($last, $previous)
+function diffComposerLockPackages($lastLock, $previousLock)
 {
-    $last = json_decode($last, associative: true);
-    $previous = json_decode($previous ?? '{}', associative: true);
+    $lastLock = json_decode($lastLock, associative: true);
+    $previousLock = json_decode($previousLock ?? '{}', associative: true);
 
-    $last = extractComposerPackagesVersions($last);
-    $previous = extractComposerPackagesVersions($previous);
+    $last = extractComposerPackagesVersions($lastLock);
+    $previous = extractComposerPackagesVersions($previousLock);
 
     $diff = collect($previous)
         ->mapWithKeys(fn ($version, $name) => [
             $name => [
-                'name' => $name,
-                'from' => $version,
-                'to' => $last[$name] ?? null,
+                'name'      => $name,
+                'from'      => $version,
+                'to'        => $last[$name] ?? null,
+                'infos_url' => getVersionUrls($name, $lastLock),
             ],
         ]);
 
@@ -192,9 +238,10 @@ function diffComposerLockPackages($last, $previous)
         ->diffKeys($previous)
         ->mapWithKeys(fn ($version, $name) => [
             $name => [
-                'name' => $name,
-                'from' => null,
-                'to' => $version,
+                'name'      => $name,
+                'from'      => null,
+                'to'        => $version,
+                'infos_url' => getVersionUrls($name, $last),
             ],
         ]);
 
@@ -216,7 +263,7 @@ function diffPackageLockPackages($last, $previous)
         ->mapWithKeys(fn ($version, $name) => [
             $name => [
                 'from' => $version,
-                'to' => $last[$name] ?? null,
+                'to'   => $last[$name] ?? null,
             ],
         ]);
 
@@ -225,7 +272,7 @@ function diffPackageLockPackages($last, $previous)
         ->mapWithKeys(fn ($version, $name) => [
             $name => [
                 'from' => null,
-                'to' => $version,
+                'to'   => $version,
             ],
         ]);
 
@@ -252,7 +299,7 @@ function printDiff(array $diff, $type = 'composer'): void
         if ($infos['from'] !== null && $infos['to'] !== null) {
             if (Comparator::greaterThan($infos['to'], $infos['from'])) {
                 $releases = match ($type) {
-                    'composer' => getComposerReleases($package, $infos['from'], $infos['to']),
+                    'composer' => getComposerReleases($package, $infos['from'], $infos['to'], $infos['infos_url']),
                     'npmjs' => getNpmjsReleases($package, $infos['from'], $infos['to']),
                     default => [],
                 };
@@ -277,9 +324,9 @@ function printDiff(array $diff, $type = 'composer'): void
     }
 }
 
-function getComposerReleases(string $package, string $from, string $to): array
+function getComposerReleases(string $package, string $from, string $to, string $url): array
 {
-    $packageInfos = file_get_contents('https://repo.packagist.org/p2/'.$package.'.json');
+    $packageInfos = file_get_contents($url);
     $packageInfos = json_decode($packageInfos, associative: true);
 
     $versions = $packageInfos['packages'][$package];
@@ -358,18 +405,18 @@ if ($command === 'help' || $options['show_version']) {
 
 $dependency_files = [
     'composer' => [
-        'file' => 'composer.lock',
-        'type' => 'composer',
+        'file'                   => 'composer.lock',
+        'type'                   => 'composer',
         'hasBeenRecentlyUpdated' => false,
-        'hasCommitLogs' => false,
-        'commitLogs' => [],
+        'hasCommitLogs'          => false,
+        'commitLogs'             => [],
     ],
-    'npmjs' => [
-        'file' => 'package-lock.json',
-        'type' => 'npmjs',
+    'npmjs'    => [
+        'file'                   => 'package-lock.json',
+        'type'                   => 'npmjs',
         'hasBeenRecentlyUpdated' => false,
-        'hasCommitLogs' => false,
-        'commitLogs' => [],
+        'hasCommitLogs'          => false,
+        'commitLogs'             => [],
     ],
 ];
 
