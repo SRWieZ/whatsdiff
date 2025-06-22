@@ -29,6 +29,14 @@ class NpmAnalyzer
         $last = json_decode($lastLockContent, true);
         $previous = json_decode($previousLockContent ?? '{}', true);
 
+        // Handle case where json_decode fails (invalid JSON or empty content)
+        if ($last === null) {
+            return [];
+        }
+        if ($previous === null) {
+            $previous = [];
+        }
+
         $lastPackages = $this->extractPackageVersions($last);
         $previousPackages = $this->extractPackageVersions($previous);
 

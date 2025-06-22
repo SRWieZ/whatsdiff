@@ -26,6 +26,14 @@ class ComposerAnalyzer
         $lastLock = json_decode($lastLockContent, true);
         $previousLock = json_decode($previousLockContent ?? '{}', true);
 
+        // Handle case where json_decode fails (invalid JSON or empty content)
+        if ($lastLock === null) {
+            return [];
+        }
+        if ($previousLock === null) {
+            $previousLock = [];
+        }
+
         $last = $this->extractPackageVersions($lastLock);
         $previous = $this->extractPackageVersions($previousLock);
 
