@@ -21,7 +21,8 @@
     "composer/semver": "^3.4",
     "saloonphp/saloon": "^3.10",
     "joetannenbaum/chewie": "^0.1.5",
-    "ext-mbstring": "*"
+    "ext-mbstring": "*",
+    "symfony/console": "^6.0|^7.0"
   },
   "require-dev": {
     "pestphp/pest": "^2.0|^3.0",
