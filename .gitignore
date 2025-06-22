@@ -17,3 +17,7 @@
 .phpunit.result.cache
 .DS_Store
 
+#Claude
+CLAUDE.md
+CLAUDE.local.md
+.claude/settings.local.json
