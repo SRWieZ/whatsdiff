@@ -9,16 +9,19 @@ class GitRepository
     private string $gitRoot;
     private string $currentDir;
     private string $relativeCurrentDir;
+    private ProcessService $processService;
 
-    public function __construct()
+    public function __construct(?ProcessService $processService = null)
     {
-        $gitRootResult = shell_exec('git rev-parse --show-toplevel');
+        $this->processService = $processService ?? new ProcessService();
 
-        if ($gitRootResult === null || empty(trim($gitRootResult))) {
+        $process = $this->processService->git(['rev-parse', '--show-toplevel']);
+
+        if (!$process->isSuccessful() || empty(trim($process->getOutput()))) {
             throw new \RuntimeException('Not in a git repository or git command failed');
         }
 
-        $this->gitRoot = rtrim(trim($gitRootResult), DIRECTORY_SEPARATOR);
+        $this->gitRoot = rtrim(trim($process->getOutput()), DIRECTORY_SEPARATOR);
         $this->currentDir = rtrim(getcwd() ?: '', DIRECTORY_SEPARATOR);
         $this->relativeCurrentDir = ltrim(str_replace($this->gitRoot, '', $this->currentDir), DIRECTORY_SEPARATOR);
     }
@@ -40,43 +43,44 @@ class GitRepository
 
     public function getFileCommitLogs(string $filename, string $beforeHash = ''): array
     {
-        $filename = escapeshellarg($filename);
-        $beforeHash = $beforeHash ? escapeshellarg($beforeHash) : '';
+        $args = ['log', '--pretty=format:%h', '--', $filename];
 
-        $cmd = "git log {$beforeHash} --pretty=format:'%h' -- {$filename}";
+        if ($beforeHash) {
+            array_splice($args, 1, 0, $beforeHash);
+        }
 
-        $output = $this->shellExecInGitRoot($cmd);
+        $process = $this->processService->git($args, $this->gitRoot);
 
-        if (is_null($output) || empty(trim($output))) {
+        if (!$process->isSuccessful() || empty(trim($process->getOutput()))) {
             return [];
         }
 
-        return explode("\n", trim($output));
+        return explode("\n", trim($process->getOutput()));
     }
 
     public function getMultipleFilesCommitLogs(array $filenames): array
     {
-        $escapedFilenames = array_map('escapeshellarg', $filenames);
-        $filesString = implode(' ', $escapedFilenames);
+        $args = array_merge(['log', '--pretty=format:%h', '--'], $filenames);
 
-        $output = $this->shellExecInGitRoot("git log --pretty=format:'%h' -- {$filesString}");
+        $process = $this->processService->git($args, $this->gitRoot);
 
-        if (is_null($output) || empty(trim($output))) {
+        if (!$process->isSuccessful() || empty(trim($process->getOutput()))) {
             return [];
         }
 
-        return explode("\n", trim($output));
+        return explode("\n", trim($process->getOutput()));
     }
 
     public function isFileRecentlyUpdated(string $filename): bool
     {
-        $output = shell_exec('git status --porcelain');
+        $process = $this->processService->git(['status', '--porcelain'], $this->gitRoot);
 
-        if (empty($output)) {
+        if (!$process->isSuccessful() || empty(trim($process->getOutput()))) {
             return false;
         }
 
-        $status = collect(explode("\n", trim($output)))
+        $lines = explode("\n", trim($process->getOutput()));
+        $status = collect($lines)
             ->filter()
             ->mapWithKeys(function ($line) {
                 $parts = array_values(array_filter(explode(' ', $line)));
@@ -98,19 +102,11 @@ class GitRepository
 
     public function getFileContentAtCommit(string $filename, string $commitHash): string
     {
-        $filename = escapeshellarg($filename);
-        $commitHash = escapeshellarg($commitHash);
+        $process = $this->processService->git(
+            ['show', $commitHash . ':' . $filename],
+            $this->gitRoot
+        );
 
-        return shell_exec("git show {$commitHash}:{$filename}") ?? '';
-    }
-
-    private function shellExecInGitRoot(string $cmd): ?string
-    {
-        $oldCwd = getcwd();
-        chdir($this->gitRoot);
-        $output = shell_exec($cmd);
-        chdir($oldCwd ?: '');
-
-        return $output;
+        return $process->isSuccessful() ? $process->getOutput() : '';
     }
 }
