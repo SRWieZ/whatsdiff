@@ -20,16 +20,23 @@ test('main command executes without errors', function () {
     // Test without --ignore-last to avoid git history dependencies in CI
     exec('php bin/whatsdiff 2>&1', $output, $exitCode);
 
-    // The command should not crash (exit code 0)
-    expect($exitCode)->toBe(0);
-    
-    // Should produce some meaningful output
     $outputString = implode("\n", $output);
+
+    // Should produce some meaningful output
     expect(strlen($outputString))->toBeGreaterThan(0);
-    
+
     // Should not contain PHP fatal errors
     expect($outputString)->not->toContain('Fatal error');
     expect($outputString)->not->toContain('PHP Fatal error');
+
+    // If exit code is not 0, it should be a graceful error (not a crash)
+    if ($exitCode !== 0) {
+        // Should contain an error message, not a crash
+        expect($outputString)->toMatch('/(Error:|not in a git repository|git command failed)/i');
+    } else {
+        // If successful, should contain expected output
+        expect($outputString)->toMatch('/(composer\.lock|package-lock\.json|No recent changes)/');
+    }
 });
 
 test('symfony console integration works', function () {

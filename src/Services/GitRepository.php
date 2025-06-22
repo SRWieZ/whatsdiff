@@ -12,7 +12,13 @@ class GitRepository
 
     public function __construct()
     {
-        $this->gitRoot = rtrim(trim(shell_exec('git rev-parse --show-toplevel') ?? ''), DIRECTORY_SEPARATOR);
+        $gitRootResult = shell_exec('git rev-parse --show-toplevel');
+
+        if ($gitRootResult === null || empty(trim($gitRootResult))) {
+            throw new \RuntimeException('Not in a git repository or git command failed');
+        }
+
+        $this->gitRoot = rtrim(trim($gitRootResult), DIRECTORY_SEPARATOR);
         $this->currentDir = rtrim(getcwd() ?: '', DIRECTORY_SEPARATOR);
         $this->relativeCurrentDir = ltrim(str_replace($this->gitRoot, '', $this->currentDir), DIRECTORY_SEPARATOR);
     }
