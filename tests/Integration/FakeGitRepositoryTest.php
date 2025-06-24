@@ -101,6 +101,21 @@ it('handles npm only changes with add, update, downgrade, and remove', function 
     runCommand('git add package-lock.json');
     runCommand('git commit -m "Update npm dependencies"');
 
+    // Add debug output on Windows before running whatsdiff
+    if (PHP_OS_FAMILY === 'Windows') {
+        echo "\n--- DEBUG INFO FOR WINDOWS ---\n";
+        echo "Current working directory: " . getcwd() . "\n";
+        echo "Temp directory: " . test()->tempDir . "\n";
+        echo "Git status:\n" . runCommand('git status') . "\n";
+        echo "Git log:\n" . runCommand('git log --oneline -5') . "\n";
+        echo "Files in directory:\n" . runCommand('dir /b') . "\n";
+        echo "Package-lock.json exists: " . (file_exists('package-lock.json') ? 'YES' : 'NO') . "\n";
+        if (file_exists('package-lock.json')) {
+            echo "Package-lock.json size: " . filesize('package-lock.json') . " bytes\n";
+        }
+        echo "-------------------------------\n";
+    }
+
     // Run whatsdiff with JSON output
     $output = runWhatsDiff(['--format=json']);
     $result = json_decode($output, true);
@@ -108,6 +123,14 @@ it('handles npm only changes with add, update, downgrade, and remove', function 
     // Debug output if null
     if ($result === null) {
         throw new \Exception("JSON decode failed. Raw output: " . $output);
+    }
+
+    // Add Windows debugging for empty diffs
+    if (PHP_OS_FAMILY === 'Windows' && isset($result['diffs']) && empty($result['diffs'])) {
+        echo "\n--- WINDOWS DEBUG: Empty diffs detected ---\n";
+        echo "Full whatsdiff output: " . $output . "\n";
+        echo "Parsed result: " . print_r($result, true) . "\n";
+        echo "---------------------------------------------\n";
     }
 
     expect($result)->toBeArray();
