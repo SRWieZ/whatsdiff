@@ -6,6 +6,9 @@ namespace Whatsdiff\Services;
 
 use Composer\Semver\Comparator;
 use Illuminate\Support\Collection;
+use Whatsdiff\Analyzers\ComposerAnalyzer;
+use Whatsdiff\Analyzers\NpmAnalyzer;
+use Whatsdiff\Analyzers\PackageManagerType;
 use Whatsdiff\Data\DependencyDiff;
 use Whatsdiff\Data\DiffResult;
 use Whatsdiff\Data\PackageChange;
@@ -19,14 +22,14 @@ class DiffCalculator
     private array $dependencyFiles = [
         'composer' => [
             'file' => 'composer.lock',
-            'type' => 'composer',
+            'type' => PackageManagerType::COMPOSER->value,
             'hasBeenRecentlyUpdated' => false,
             'hasCommitLogs' => false,
             'commitLogs' => [],
         ],
         'npmjs' => [
             'file' => 'package-lock.json',
-            'type' => 'npmjs',
+            'type' => PackageManagerType::NPM->value,
             'hasBeenRecentlyUpdated' => false,
             'hasCommitLogs' => false,
             'commitLogs' => [],
