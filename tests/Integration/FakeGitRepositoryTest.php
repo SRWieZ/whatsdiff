@@ -31,10 +31,23 @@ afterEach(function () {
         chdir($this->originalDir);
     }
     
-    // Clean up temporary directory
+    // Clean up temporary directory with Windows-specific handling
     if (is_dir($this->tempDir)) {
         if (PHP_OS_FAMILY === 'Windows') {
-            runCommand("rmdir /s /q \"{$this->tempDir}\"");
+            // On Windows, sometimes files are locked by git/processes, so try a few times
+            for ($i = 0; $i < 3; $i++) {
+                try {
+                    runCommand("rmdir /s /q \"{$this->tempDir}\"");
+                    break; // Success, exit loop
+                } catch (\RuntimeException $e) {
+                    if ($i < 2) { // Not the last attempt
+                        usleep(500000); // Wait 0.5 seconds
+                        continue;
+                    }
+                    // Last attempt failed, just warn
+                    echo "Warning: Could not clean up temp directory after 3 attempts: " . $this->tempDir . "\n";
+                }
+            }
         } else {
             runCommand("rm -rf \"{$this->tempDir}\"");
         }
@@ -101,46 +114,10 @@ it('handles npm only changes with add, update, downgrade, and remove', function 
     runCommand('git add package-lock.json');
     runCommand('git commit -m "Update npm dependencies"');
 
-    // Add debug output on Windows before running whatsdiff
-    if (PHP_OS_FAMILY === 'Windows') {
-        echo "\n--- DEBUG INFO FOR WINDOWS ---\n";
-        echo "Current working directory: " . getcwd() . "\n";
-        echo "Temp directory: " . test()->tempDir . "\n";
-        echo "Git status:\n" . runCommand('git status') . "\n";
-        echo "Git log:\n" . runCommand('git log --oneline -5') . "\n";
-        echo "Files in directory:\n" . runCommand('dir /b') . "\n";
-        echo "Package-lock.json exists: " . (file_exists('package-lock.json') ? 'YES' : 'NO') . "\n";
-        if (file_exists('package-lock.json')) {
-            echo "Package-lock.json size: " . filesize('package-lock.json') . " bytes\n";
-        }
-        
-        // Test git log commands that whatsdiff would use
-        echo "Git log for package-lock.json:\n" . runCommand('git log --pretty=format:%h -- package-lock.json') . "\n";
-        echo "Git show-toplevel:\n" . runCommand('git rev-parse --show-toplevel') . "\n";
-        
-        // Test the git show command
-        $commits = explode("\n", trim(runCommand('git log --pretty=format:%h -- package-lock.json')));
-        if (!empty($commits) && !empty($commits[0])) {
-            $latestCommit = $commits[0];
-            echo "Latest commit for package-lock.json: {$latestCommit}\n";
-            echo "Git show {$latestCommit}:package-lock.json (first 200 chars):\n";
-            $showOutput = runCommand("git show {$latestCommit}:package-lock.json");
-            echo substr($showOutput, 0, 200) . "...\n";
-        }
-        echo "-------------------------------\n";
-    }
 
     // Run whatsdiff with JSON output
     $output = runWhatsDiff(['--format=json']);
     
-    // Add debugging on Windows for any remaining issues
-    if (PHP_OS_FAMILY === 'Windows') {
-        echo "\n--- WHATSDIFF OUTPUT ON WINDOWS ---\n";
-        echo "Output: " . $output . "\n";
-        echo "Output length: " . strlen($output) . "\n";
-        echo "First 100 chars: " . substr($output, 0, 100) . "\n";
-        echo "-----------------------------------\n";
-    }
     
     $result = json_decode($output, true);
 

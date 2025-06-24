@@ -16,7 +16,14 @@ if (!function_exists('runCommand')) {
         $process = SymfonyProcess::fromShellCommandline($command, test()->tempDir);
         $process->run();
         
+        // Special handling for Windows rmdir cleanup - don't fail if it's just file locking
         if (!$process->isSuccessful()) {
+            if (PHP_OS_FAMILY === 'Windows' && str_contains($command, 'rmdir') && 
+                str_contains($process->getErrorOutput(), 'being used by another process')) {
+                // Just warn, don't fail - this is a common Windows issue
+                echo "Warning: Could not clean up temp directory (file in use): " . $command . "\n";
+                return $process->getOutput();
+            }
             throw new \RuntimeException("Command failed: {$command}\nOutput: {$process->getOutput()}\nError: {$process->getErrorOutput()}");
         }
         

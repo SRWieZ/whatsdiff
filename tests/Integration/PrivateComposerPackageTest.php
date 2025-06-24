@@ -28,10 +28,23 @@ afterEach(function () {
         chdir($this->originalDir);
     }
     
-    // Clean up temporary directory
+    // Clean up temporary directory with Windows-specific handling
     if (is_dir($this->tempDir)) {
         if (PHP_OS_FAMILY === 'Windows') {
-            runCommand("rmdir /s /q \"{$this->tempDir}\"");
+            // On Windows, sometimes files are locked by git/processes, so try a few times
+            for ($i = 0; $i < 3; $i++) {
+                try {
+                    runCommand("rmdir /s /q \"{$this->tempDir}\"");
+                    break; // Success, exit loop
+                } catch (\RuntimeException $e) {
+                    if ($i < 2) { // Not the last attempt
+                        usleep(500000); // Wait 0.5 seconds
+                        continue;
+                    }
+                    // Last attempt failed, just warn
+                    echo "Warning: Could not clean up temp directory after 3 attempts: " . $this->tempDir . "\n";
+                }
+            }
         } else {
             runCommand("rm -rf \"{$this->tempDir}\"");
         }
