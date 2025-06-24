@@ -5,7 +5,10 @@ declare(strict_types=1);
 namespace Whatsdiff\Services;
 
 use Composer\Semver\Comparator;
-use Symfony\Component\Console\Output\OutputInterface;
+use Illuminate\Support\Collection;
+use Whatsdiff\Data\DependencyDiff;
+use Whatsdiff\Data\DiffResult;
+use Whatsdiff\Data\PackageChange;
 
 class DiffCalculator
 {
@@ -40,7 +43,7 @@ class DiffCalculator
         $this->npmAnalyzer = $npmAnalyzer;
     }
 
-    public function calculateDiffs(bool $ignoreLast, OutputInterface $output): int
+    public function calculateDiffs(bool $ignoreLast): DiffResult
     {
         $this->initializeDependencyFiles($ignoreLast);
 
@@ -49,19 +52,14 @@ class DiffCalculator
         $recentlyUpdated = $dependencyFiles->contains(fn ($file) => $file['hasBeenRecentlyUpdated'], true);
         $hasCommitLogs = $dependencyFiles->contains(fn ($file) => $file['hasCommitLogs'], true);
 
+        $diffs = collect();
+
         // Case 1: No recent changes and no commit logs
         if (!$recentlyUpdated && !$hasCommitLogs) {
-            $output->writeln('No recent changes and no commit logs found for ' .
-                $dependencyFiles->pluck('file')->implode(', '));
-            return 0;
+            return new DiffResult($diffs, false);
         }
 
         if ($recentlyUpdated) {
-            $output->writeln('Uncommitted changes detected on ' .
-                $dependencyFiles->where('hasBeenRecentlyUpdated', true)
-                    ->pluck('file')->implode(', '));
-            $output->writeln('');
-
             $filenames = $dependencyFiles
                 ->where('hasBeenRecentlyUpdated', true)
                 ->pluck('file', 'type')->toArray();
@@ -74,10 +72,13 @@ class DiffCalculator
         $commitLogs = $this->git->getMultipleFilesCommitLogs($filenames);
 
         foreach ($filenames as $type => $filename) {
-            $this->processDependencyFile($type, $filename, $recentlyUpdated, $commitLogs, $output);
+            $diff = $this->processDependencyFile($type, $filename, $recentlyUpdated, $commitLogs);
+            if ($diff !== null) {
+                $diffs->push($diff);
+            }
         }
 
-        return 0;
+        return new DiffResult($diffs, $recentlyUpdated);
     }
 
     private function initializeDependencyFiles(bool $ignoreLast): void
@@ -105,9 +106,8 @@ class DiffCalculator
         string $type,
         string $filename,
         bool $recentlyUpdated,
-        array $commitLogs,
-        OutputInterface $output
-    ): void {
+        array $commitLogs
+    ): ?DependencyDiff {
         $commitLogsToCompare = $recentlyUpdated
             ? $this->dependencyFiles[$type]['commitLogs']
             : $commitLogs;
@@ -125,27 +125,28 @@ class DiffCalculator
             $isNew = count($commitPriorToLast) === 0;
 
             if (!$isNew) {
-                $output->writeln($filename . ' has been untouched since ' . array_pop($commitPriorToLast));
-                return;
+                // File has been untouched
+                return null;
             }
         }
 
         [$last, $previous] = $this->getFilesToCompare($filename, $lastHash, $previousHashOrNot);
 
         if (empty($last)) {
-            return;
+            return null;
         }
 
-        if ($isNew) {
-            $output->writeln($filename . ($lastHash ? ' created at ' . $lastHash : ' created'));
-        } else {
-            $output->writeln($filename . ' between ' . $previousHash . ' and ' . ($lastHash ?? 'uncommitted changes'));
-        }
-        $output->writeln('');
+        $packageDiffs = $this->calculatePackageDiff($type, $last, $previous);
+        $changes = $this->convertToPackageChanges($packageDiffs, $type);
 
-        $diff = $this->calculatePackageDiff($type, $last, $previous);
-        $this->printDiff($diff, $type, $output);
-        $output->writeln('');
+        return new DependencyDiff(
+            filename: $filename,
+            type: $type,
+            fromCommit: $previousHash,
+            toCommit: $lastHash,
+            changes: $changes,
+            isNew: $isNew,
+        );
     }
 
     private function getCommitHashToCompare(array $commitLogs, bool $recentlyUpdated): array
@@ -179,37 +180,47 @@ class DiffCalculator
         };
     }
 
-    private function printDiff(array $diff, string $type, OutputInterface $output): void
+    private function convertToPackageChanges(array $diff, string $type): Collection
     {
-        if (!count($diff)) {
-            $output->writeln(' → No dependencies changes detected');
-            return;
-        }
-
-        $maxStrLen = max(array_map('strlen', array_keys($diff)));
-        $maxStrLenVersion = max(array_map(
-            fn ($el) => strlen($el['from'] ?? ''),
-            array_filter($diff, fn ($el) => $el['from'] !== null)
-        ) ?: [0]);
+        $changes = collect();
 
         foreach ($diff as $package => $infos) {
             if ($infos['from'] !== null && $infos['to'] !== null) {
                 if (Comparator::greaterThan($infos['to'], $infos['from'])) {
                     $releasesCount = $this->getReleasesCount($type, $package, $infos);
-                    $releasesText = $releasesCount > 1 ? " ({$releasesCount} releases)" : '';
-
-                    $output->writeln("\033[36m↑\033[0m " . str_pad($package, $maxStrLen) . ' : ' .
-                        str_pad($infos['from'], $maxStrLenVersion) . ' => ' . $infos['to'] . $releasesText);
+                    $changes->push(PackageChange::updated(
+                        name: $package,
+                        type: $type,
+                        fromVersion: $infos['from'],
+                        toVersion: $infos['to'],
+                        releaseCount: $releasesCount,
+                    ));
                 } else {
-                    $output->writeln("\033[33m↓\033[0m " . str_pad($package, $maxStrLen) . ' : ' .
-                        str_pad($infos['from'], $maxStrLenVersion) . ' => ' . $infos['to']);
+                    $releasesCount = $this->getReleasesCount($type, $package, $infos);
+                    $changes->push(PackageChange::downgraded(
+                        name: $package,
+                        type: $type,
+                        fromVersion: $infos['from'],
+                        toVersion: $infos['to'],
+                        releaseCount: $releasesCount,
+                    ));
                 }
-            } elseif ($infos['from'] === null) {
-                $output->writeln("\033[32m+\033[0m " . str_pad($package, $maxStrLen) . ' : ' . $infos['to']);
-            } elseif ($infos['to'] === null) {
-                $output->writeln("\033[31m×\033[0m " . str_pad($package, $maxStrLen) . ' : ' . $infos['from']);
+            } elseif ($infos['from'] === null && $infos['to'] !== null) {
+                $changes->push(PackageChange::added(
+                    name: $package,
+                    type: $type,
+                    version: $infos['to'],
+                ));
+            } elseif ($infos['from'] !== null && $infos['to'] === null) {
+                $changes->push(PackageChange::removed(
+                    name: $package,
+                    type: $type,
+                    version: $infos['from'],
+                ));
             }
         }
+
+        return $changes;
     }
 
     private function getReleasesCount(string $type, string $package, array $infos): int

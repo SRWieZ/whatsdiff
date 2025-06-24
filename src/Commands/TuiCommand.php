@@ -47,13 +47,16 @@ class TuiCommand extends Command
             $npmAnalyzer = new NpmAnalyzer($packageInfoFetcher);
             $diffCalculator = new DiffCalculator($git, $composerAnalyzer, $npmAnalyzer);
 
-            // Get package diffs
-            $packageDiffs = $this->getPackageDiffs($diffCalculator, $ignoreLast);
+            // Calculate diffs
+            $result = $diffCalculator->calculateDiffs($ignoreLast);
 
-            if (empty($packageDiffs)) {
+            if (!$result->hasAnyChanges()) {
                 $output->writeln('<info>No dependency changes detected.</info>');
                 return Command::SUCCESS;
             }
+
+            // Convert to flat array for TUI
+            $packageDiffs = $this->convertToTuiFormat($result);
 
             // Launch TUI
             $tui = new TerminalUI($packageDiffs);
@@ -67,28 +70,24 @@ class TuiCommand extends Command
         }
     }
 
-    private function getPackageDiffs(DiffCalculator $diffCalculator, bool $ignoreLast): array
+    private function convertToTuiFormat(\Whatsdiff\Data\DiffResult $result): array
     {
-        // This method would need to be extracted from DiffCalculator
-        // to return the package diffs data structure instead of printing to output
-        // For now, returning a mock structure
-        return [
-            [
-                'name' => 'example/package',
-                'type' => 'composer',
-                'from' => '1.0.0',
-                'to' => '1.1.0',
-                'status' => 'updated',
-                'releases' => 3,
-            ],
-            [
-                'name' => 'another/package',
-                'type' => 'composer',
-                'from' => null,
-                'to' => '2.0.0',
-                'status' => 'added',
-                'releases' => null,
-            ],
-        ];
+        $packages = [];
+
+        foreach ($result->diffs as $diff) {
+            foreach ($diff->changes as $change) {
+                $packages[] = [
+                    'name' => $change->name,
+                    'type' => $change->type,
+                    'from' => $change->from,
+                    'to' => $change->to,
+                    'status' => $change->status->value,
+                    'releases' => $change->releaseCount,
+                    'filename' => $diff->filename,
+                ];
+            }
+        }
+
+        return $packages;
     }
 }

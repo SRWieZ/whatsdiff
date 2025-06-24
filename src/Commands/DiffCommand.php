@@ -9,6 +9,10 @@ use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
+use Whatsdiff\Outputs\JsonOutput;
+use Whatsdiff\Outputs\MarkdownOutput;
+use Whatsdiff\Outputs\OutputFormatterInterface;
+use Whatsdiff\Outputs\TextOutput;
 use Whatsdiff\Services\DiffCalculator;
 use Whatsdiff\Services\GitRepository;
 use Whatsdiff\Services\ComposerAnalyzer;
@@ -31,12 +35,22 @@ class DiffCommand extends Command
                 null,
                 InputOption::VALUE_NONE,
                 'Ignore last uncommitted changes'
-            );
+            )
+            ->addOption(
+                'format',
+                'f',
+                InputOption::VALUE_REQUIRED,
+                'Output format (text, json, markdown)',
+                'text'
+            )
+        ;
     }
 
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
         $ignoreLast = (bool) $input->getOption('ignore-last');
+        $format = $input->getOption('format');
+        $noAnsi = !$output->isDecorated();
 
         try {
             // Initialize services
@@ -46,12 +60,29 @@ class DiffCommand extends Command
             $npmAnalyzer = new NpmAnalyzer($packageInfoFetcher);
             $diffCalculator = new DiffCalculator($git, $composerAnalyzer, $npmAnalyzer);
 
-            // Calculate and display diffs
-            return $diffCalculator->calculateDiffs($ignoreLast, $output);
+            // Calculate diffs
+            $result = $diffCalculator->calculateDiffs($ignoreLast);
+
+            // Get appropriate formatter
+            $formatter = $this->getFormatter($format, $noAnsi);
+
+            // Output results
+            $formatter->format($result, $output);
+
+            return Command::SUCCESS;
 
         } catch (\Exception $e) {
             $output->writeln('<error>Error: ' . $e->getMessage() . '</error>');
             return Command::FAILURE;
         }
+    }
+
+    private function getFormatter(string $format, bool $noAnsi): OutputFormatterInterface
+    {
+        return match ($format) {
+            'json' => new JsonOutput(),
+            'markdown' => new MarkdownOutput(),
+            default => new TextOutput(!$noAnsi),
+        };
     }
 }
