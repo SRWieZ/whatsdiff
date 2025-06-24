@@ -51,6 +51,19 @@ class GitRepository
 
         $process = $this->processService->git($args, $this->gitRoot);
 
+        // Debug output for Windows
+        if (PHP_OS_FAMILY === 'Windows') {
+            echo "GitRepository::getFileCommitLogs DEBUG:\n";
+            echo "  filename: {$filename}\n";
+            echo "  gitRoot: {$this->gitRoot}\n";
+            echo "  currentDir: {$this->currentDir}\n";
+            echo "  relativeCurrentDir: {$this->relativeCurrentDir}\n";
+            echo "  command: " . implode(' ', $args) . "\n";
+            echo "  process successful: " . ($process->isSuccessful() ? 'YES' : 'NO') . "\n";
+            echo "  process output: '" . trim($process->getOutput()) . "'\n";
+            echo "  process error: '" . trim($process->getErrorOutput()) . "'\n";
+        }
+
         if (!$process->isSuccessful() || empty(trim($process->getOutput()))) {
             return [];
         }

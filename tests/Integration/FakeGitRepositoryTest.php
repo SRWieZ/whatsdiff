@@ -138,6 +138,8 @@ it('handles npm only changes with add, update, downgrade, and remove', function 
         echo "\n--- WHATSDIFF RAW OUTPUT ---\n";
         echo "Output: " . $output . "\n";
         echo "Output length: " . strlen($output) . "\n";
+        
+        echo "Debug output will be mixed in with this output above\n";
         echo "---------------------------\n";
     }
     
