@@ -23,7 +23,18 @@ class GitRepository
 
         $this->gitRoot = rtrim(trim($process->getOutput()), DIRECTORY_SEPARATOR);
         $this->currentDir = rtrim(getcwd() ?: '', DIRECTORY_SEPARATOR);
-        $this->relativeCurrentDir = ltrim(str_replace($this->gitRoot, '', $this->currentDir), DIRECTORY_SEPARATOR);
+        
+        // Normalize paths on Windows to handle path separator differences
+        $normalizedGitRoot = str_replace(['/', '\\'], DIRECTORY_SEPARATOR, $this->gitRoot);
+        $normalizedCurrentDir = str_replace(['/', '\\'], DIRECTORY_SEPARATOR, $this->currentDir);
+        
+        // Also handle Windows short vs long path names
+        if (PHP_OS_FAMILY === 'Windows') {
+            $normalizedGitRoot = strtolower(realpath($normalizedGitRoot) ?: $normalizedGitRoot);
+            $normalizedCurrentDir = strtolower(realpath($normalizedCurrentDir) ?: $normalizedCurrentDir);
+        }
+        
+        $this->relativeCurrentDir = ltrim(str_replace($normalizedGitRoot, '', $normalizedCurrentDir), DIRECTORY_SEPARATOR);
     }
 
     public function getGitRoot(): string
@@ -50,6 +61,7 @@ class GitRepository
         }
 
         $process = $this->processService->git($args, $this->gitRoot);
+
 
         if (!$process->isSuccessful() || empty(trim($process->getOutput()))) {
             return [];

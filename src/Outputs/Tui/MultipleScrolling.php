@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Whatsdiff\Outputs\Tui;
 
 use Laravel\Prompts\Themes\Contracts\Scrolling as ScrollingRenderer;

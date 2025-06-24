@@ -128,6 +128,6 @@ class ComposerAnalyzer
             }
         }
 
-        return collect($localAuth)->merge($globalAuth)->only('http-basic')->toArray();
+        return collect($globalAuth)->merge($localAuth)->only('http-basic')->toArray();
     }
 }

@@ -88,11 +88,13 @@ class DiffCalculator
     {
         $relativeCurrentDir = $this->git->getRelativeCurrentDir();
 
+
         // Adjust file paths relative to current directory and git root
         foreach ($this->dependencyFiles as $key => $file) {
             if (!empty($relativeCurrentDir) && file_exists($file['file'])) {
                 $this->dependencyFiles[$key]['file'] = $relativeCurrentDir . DIRECTORY_SEPARATOR . $file['file'];
             }
+            
         }
 
         foreach ($this->dependencyFiles as $type => $file) {
@@ -102,6 +104,7 @@ class DiffCalculator
             $commitLogs = $this->git->getFileCommitLogs($file['file']);
             $this->dependencyFiles[$type]['hasCommitLogs'] = !empty($commitLogs);
             $this->dependencyFiles[$type]['commitLogs'] = $commitLogs;
+            
         }
     }
 
