@@ -113,11 +113,34 @@ it('handles npm only changes with add, update, downgrade, and remove', function 
         if (file_exists('package-lock.json')) {
             echo "Package-lock.json size: " . filesize('package-lock.json') . " bytes\n";
         }
+        
+        // Test git log commands that whatsdiff would use
+        echo "Git log for package-lock.json:\n" . runCommand('git log --pretty=format:%h -- package-lock.json') . "\n";
+        echo "Git show-toplevel:\n" . runCommand('git rev-parse --show-toplevel') . "\n";
+        
+        // Test the git show command
+        $commits = explode("\n", trim(runCommand('git log --pretty=format:%h -- package-lock.json')));
+        if (!empty($commits) && !empty($commits[0])) {
+            $latestCommit = $commits[0];
+            echo "Latest commit for package-lock.json: {$latestCommit}\n";
+            echo "Git show {$latestCommit}:package-lock.json (first 200 chars):\n";
+            $showOutput = runCommand("git show {$latestCommit}:package-lock.json");
+            echo substr($showOutput, 0, 200) . "...\n";
+        }
         echo "-------------------------------\n";
     }
 
     // Run whatsdiff with JSON output
     $output = runWhatsDiff(['--format=json']);
+    
+    // Add debugging before JSON decode on Windows
+    if (PHP_OS_FAMILY === 'Windows') {
+        echo "\n--- WHATSDIFF RAW OUTPUT ---\n";
+        echo "Output: " . $output . "\n";
+        echo "Output length: " . strlen($output) . "\n";
+        echo "---------------------------\n";
+    }
+    
     $result = json_decode($output, true);
 
     // Debug output if null
