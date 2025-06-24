@@ -9,10 +9,7 @@ use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
-use Whatsdiff\Outputs\JsonOutput;
-use Whatsdiff\Outputs\MarkdownOutput;
-use Whatsdiff\Outputs\OutputFormatterInterface;
-use Whatsdiff\Outputs\TextOutput;
+use Whatsdiff\Outputs\Tui\TerminalUI;
 use Whatsdiff\Services\DiffCalculator;
 use Whatsdiff\Services\GitRepository;
 use Whatsdiff\Services\ComposerAnalyzer;
@@ -20,37 +17,27 @@ use Whatsdiff\Services\NpmAnalyzer;
 use Whatsdiff\Services\PackageInfoFetcher;
 
 #[AsCommand(
-    name: 'diff',
-    description: 'See what\'s changed in your project\'s dependencies',
+    name: 'tui',
+    description: 'Launch the Terminal User Interface to browse dependency changes',
     hidden: false,
 )]
-class DiffCommand extends Command
+class TuiCommand extends Command
 {
     protected function configure(): void
     {
         $this
-            ->setHelp('This command analyzes changes in your project dependencies (composer.lock and package-lock.json)')
+            ->setHelp('This command launches an interactive TUI to browse changes in your project dependencies')
             ->addOption(
                 'ignore-last',
                 null,
                 InputOption::VALUE_NONE,
                 'Ignore last uncommitted changes'
-            )
-            ->addOption(
-                'format',
-                'f',
-                InputOption::VALUE_REQUIRED,
-                'Output format (text, json, markdown)',
-                'text'
-            )
-        ;
+            );
     }
 
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
         $ignoreLast = (bool) $input->getOption('ignore-last');
-        $format = $input->getOption('format');
-        $noAnsi = !$output->isDecorated();
 
         try {
             // Initialize services
@@ -63,11 +50,17 @@ class DiffCommand extends Command
             // Calculate diffs
             $result = $diffCalculator->calculateDiffs($ignoreLast);
 
-            // Get appropriate formatter
-            $formatter = $this->getFormatter($format, $noAnsi);
+            if (!$result->hasAnyChanges()) {
+                $output->writeln('<info>No dependency changes detected.</info>');
+                return Command::SUCCESS;
+            }
 
-            // Output results
-            $formatter->format($result, $output);
+            // Convert to flat array for TUI
+            $packageDiffs = $this->convertToTuiFormat($result);
+
+            // Launch TUI
+            $tui = new TerminalUI($packageDiffs);
+            $tui->prompt();
 
             return Command::SUCCESS;
 
@@ -77,12 +70,24 @@ class DiffCommand extends Command
         }
     }
 
-    private function getFormatter(string $format, bool $noAnsi): OutputFormatterInterface
+    private function convertToTuiFormat(\Whatsdiff\Data\DiffResult $result): array
     {
-        return match ($format) {
-            'json' => new JsonOutput(),
-            'markdown' => new MarkdownOutput(),
-            default => new TextOutput(!$noAnsi),
-        };
+        $packages = [];
+
+        foreach ($result->diffs as $diff) {
+            foreach ($diff->changes as $change) {
+                $packages[] = [
+                    'name' => $change->name,
+                    'type' => $change->type,
+                    'from' => $change->from,
+                    'to' => $change->to,
+                    'status' => $change->status->value,
+                    'releases' => $change->releaseCount,
+                    'filename' => $diff->filename,
+                ];
+            }
+        }
+
+        return $packages;
     }
 }
