@@ -30,7 +30,8 @@
     "humbug/box": "^4.3",
     "nunomaduro/collision": "^7.0|^8.0",
     "phpstan/phpstan": "^2.0",
-    "spatie/ray": "^1.41"
+    "spatie/ray": "^1.41",
+    "mockery/mockery": "^1.6"
   },
   "config": {
     "allow-plugins": {

@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Whatsdiff\Apis\Github;
 
 use Saloon\Http\Connector;
