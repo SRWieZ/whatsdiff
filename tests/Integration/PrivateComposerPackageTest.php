@@ -10,18 +10,31 @@ beforeEach(function () {
     $this->tempDir = sys_get_temp_dir() . '/whatsdiff-private-test-' . uniqid();
     mkdir($this->tempDir, 0755, true);
     
+    // Store original directory to restore later
+    $this->originalDir = getcwd();
+    
+    // Change to temp directory before running git commands
+    chdir($this->tempDir);
+    
     // Initialize git repository
     runCommand('git init');
     runCommand('git config user.email "test@example.com"');
     runCommand('git config user.name "Test User"');
-    
-    chdir($this->tempDir);
 });
 
 afterEach(function () {
+    // Restore original directory
+    if (isset($this->originalDir)) {
+        chdir($this->originalDir);
+    }
+    
     // Clean up temporary directory
     if (is_dir($this->tempDir)) {
-        runCommand("rm -rf {$this->tempDir}");
+        if (PHP_OS_FAMILY === 'Windows') {
+            runCommand("rmdir /s /q \"{$this->tempDir}\"");
+        } else {
+            runCommand("rm -rf \"{$this->tempDir}\"");
+        }
     }
 });
 
@@ -126,6 +139,11 @@ it('handles private composer packages with authentication', function () {
     $output = runWhatsDiff(['--format=json']);
     $result = json_decode($output, true);
 
+    // Debug output if null
+    if ($result === null) {
+        throw new \Exception("JSON decode failed. Raw output: " . $output);
+    }
+
     expect($result)->toBeArray();
     expect($result)->toHaveKey('diffs');
     expect($result['diffs'])->toHaveCount(1);
@@ -199,6 +217,11 @@ it('handles private packages without authentication gracefully', function () {
     // Run whatsdiff - should still work but without release count info
     $output = runWhatsDiff(['--format=json']);
     $result = json_decode($output, true);
+
+    // Debug output if null
+    if ($result === null) {
+        throw new \Exception("JSON decode failed. Raw output: " . $output);
+    }
 
     expect($result)->toBeArray();
     expect($result)->toHaveKey('diffs');
@@ -279,6 +302,11 @@ it('prioritizes local auth.json over global auth.json', function () {
     // Test that analyzer uses local auth (we can't easily test the exact URL construction in integration test)
     $output = runWhatsDiff(['--format=json']);
     $result = json_decode($output, true);
+
+    // Debug output if null
+    if ($result === null) {
+        throw new \Exception("JSON decode failed. Raw output: " . $output);
+    }
 
     expect($result)->toBeArray();
     expect($result['diffs'])->toHaveCount(1);

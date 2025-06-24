@@ -11,19 +11,33 @@ beforeEach(function () {
     $this->tempDir = sys_get_temp_dir() . '/whatsdiff-test-' . uniqid();
     mkdir($this->tempDir, 0755, true);
     
+    // Store original directory to restore later
+    $this->originalDir = getcwd();
+    
+    // Change to temp directory before running git commands
+    chdir($this->tempDir);
+    
     // Initialize git repository
     runCommand('git init');
     runCommand('git config user.email "test@example.com"');
     runCommand('git config user.name "Test User"');
     
     $this->gitRepository = new GitRepository();
-    chdir($this->tempDir);
 });
 
 afterEach(function () {
+    // Restore original directory
+    if (isset($this->originalDir)) {
+        chdir($this->originalDir);
+    }
+    
     // Clean up temporary directory
     if (is_dir($this->tempDir)) {
-        runCommand("rm -rf {$this->tempDir}");
+        if (PHP_OS_FAMILY === 'Windows') {
+            runCommand("rmdir /s /q \"{$this->tempDir}\"");
+        } else {
+            runCommand("rm -rf \"{$this->tempDir}\"");
+        }
     }
 });
 
@@ -90,6 +104,11 @@ it('handles npm only changes with add, update, downgrade, and remove', function 
     // Run whatsdiff with JSON output
     $output = runWhatsDiff(['--format=json']);
     $result = json_decode($output, true);
+
+    // Debug output if null
+    if ($result === null) {
+        throw new \Exception("JSON decode failed. Raw output: " . $output);
+    }
 
     expect($result)->toBeArray();
     expect($result)->toHaveKey('diffs');
@@ -213,6 +232,11 @@ it('handles composer only changes', function () {
     $output = runWhatsDiff(['--format=json']);
     $result = json_decode($output, true);
 
+    // Debug output if null
+    if ($result === null) {
+        throw new \Exception("JSON decode failed. Raw output: " . $output);
+    }
+
     expect($result)->toBeArray();
     expect($result)->toHaveKey('diffs');
     expect($result['diffs'])->toHaveCount(1);
@@ -293,6 +317,11 @@ it('handles both composer and npm changes across multiple commits', function () 
     $output = runWhatsDiff(['--format=json']);
     $result = json_decode($output, true);
 
+    // Debug output if null
+    if ($result === null) {
+        throw new \Exception("JSON decode failed. Raw output: " . $output);
+    }
+
     expect($result)->toBeArray();
     expect($result)->toHaveKey('diffs');
     expect($result['diffs'])->toHaveCount(2);
@@ -328,6 +357,11 @@ it('shows no changes when there are several commits without dependency updates',
     // Run whatsdiff
     $output = runWhatsDiff(['--format=json']);
     $result = json_decode($output, true);
+
+    // Debug output if null
+    if ($result === null) {
+        throw new \Exception("JSON decode failed. Raw output: " . $output);
+    }
 
     expect($result)->toBeArray();
     expect($result)->toHaveKey('diffs');
