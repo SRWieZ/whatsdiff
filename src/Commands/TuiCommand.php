@@ -9,11 +9,11 @@ use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
+use Whatsdiff\Analyzers\ComposerAnalyzer;
+use Whatsdiff\Analyzers\NpmAnalyzer;
 use Whatsdiff\Outputs\Tui\TerminalUI;
 use Whatsdiff\Services\DiffCalculator;
 use Whatsdiff\Services\GitRepository;
-use Whatsdiff\Services\ComposerAnalyzer;
-use Whatsdiff\Services\NpmAnalyzer;
 use Whatsdiff\Services\PackageInfoFetcher;
 
 #[AsCommand(
