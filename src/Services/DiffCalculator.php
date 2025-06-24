@@ -88,13 +88,6 @@ class DiffCalculator
     {
         $relativeCurrentDir = $this->git->getRelativeCurrentDir();
 
-        // Debug output for Windows
-        if (PHP_OS_FAMILY === 'Windows') {
-            echo "DiffCalculator::initializeDependencyFiles DEBUG:\n";
-            echo "  relativeCurrentDir: '{$relativeCurrentDir}'\n";
-            echo "  gitRoot: " . $this->git->getGitRoot() . "\n";
-            echo "  currentDir: " . $this->git->getCurrentDir() . "\n";
-        }
 
         // Adjust file paths relative to current directory and git root
         foreach ($this->dependencyFiles as $key => $file) {
@@ -102,11 +95,6 @@ class DiffCalculator
                 $this->dependencyFiles[$key]['file'] = $relativeCurrentDir . DIRECTORY_SEPARATOR . $file['file'];
             }
             
-            // Debug file paths on Windows
-            if (PHP_OS_FAMILY === 'Windows') {
-                echo "  {$key} file path: '{$this->dependencyFiles[$key]['file']}'\n";
-                echo "  {$key} file exists: " . (file_exists($this->dependencyFiles[$key]['file']) ? 'YES' : 'NO') . "\n";
-            }
         }
 
         foreach ($this->dependencyFiles as $type => $file) {
@@ -117,13 +105,6 @@ class DiffCalculator
             $this->dependencyFiles[$type]['hasCommitLogs'] = !empty($commitLogs);
             $this->dependencyFiles[$type]['commitLogs'] = $commitLogs;
             
-            // Debug results on Windows
-            if (PHP_OS_FAMILY === 'Windows') {
-                echo "  {$type} hasBeenRecentlyUpdated: " . ($this->dependencyFiles[$type]['hasBeenRecentlyUpdated'] ? 'YES' : 'NO') . "\n";
-                echo "  {$type} hasCommitLogs: " . ($this->dependencyFiles[$type]['hasCommitLogs'] ? 'YES' : 'NO') . "\n";
-                echo "  {$type} commitLogs count: " . count($commitLogs) . "\n";
-                echo "  {$type} commitLogs: " . implode(', ', $commitLogs) . "\n";
-            }
         }
     }
 

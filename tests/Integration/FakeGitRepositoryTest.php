@@ -133,14 +133,13 @@ it('handles npm only changes with add, update, downgrade, and remove', function 
     // Run whatsdiff with JSON output
     $output = runWhatsDiff(['--format=json']);
     
-    // Add debugging before JSON decode on Windows
+    // Add debugging on Windows for any remaining issues
     if (PHP_OS_FAMILY === 'Windows') {
-        echo "\n--- WHATSDIFF RAW OUTPUT ---\n";
+        echo "\n--- WHATSDIFF OUTPUT ON WINDOWS ---\n";
         echo "Output: " . $output . "\n";
         echo "Output length: " . strlen($output) . "\n";
-        
-        echo "Debug output will be mixed in with this output above\n";
-        echo "---------------------------\n";
+        echo "First 100 chars: " . substr($output, 0, 100) . "\n";
+        echo "-----------------------------------\n";
     }
     
     $result = json_decode($output, true);
