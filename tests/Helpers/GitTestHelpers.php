@@ -38,8 +38,29 @@ if (!function_exists('runWhatsDiff')) {
         }
         
         $process = SymfonyProcess::fromShellCommandline($command, test()->tempDir);
+        // Ensure proper working directory and environment for Windows
+        if (PHP_OS_FAMILY === 'Windows') {
+            $process->setEnv(['PATH' => getenv('PATH')]);
+        }
         $process->run();
         
-        return $process->getOutput();
+        $output = $process->getOutput();
+        $errorOutput = $process->getErrorOutput();
+        
+        // Add debugging for Windows
+        if (PHP_OS_FAMILY === 'Windows' && !$process->isSuccessful()) {
+            throw new \RuntimeException(
+                "whatsdiff command failed on Windows:\n" .
+                "Command: {$command}\n" .
+                "Working Directory: " . test()->tempDir . "\n" .
+                "Exit Code: " . $process->getExitCode() . "\n" .
+                "Output: {$output}\n" .
+                "Error: {$errorOutput}\n" .
+                "Git Status: " . runCommand('git status --porcelain') . "\n" .
+                "Git Log: " . runCommand('git log --oneline -5')
+            );
+        }
+        
+        return $output;
     }
 }
