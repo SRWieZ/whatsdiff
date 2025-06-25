@@ -2,7 +2,6 @@
 
 declare(strict_types=1);
 
-use Symfony\Component\Process\Process as SymfonyProcess;
 use Whatsdiff\Services\GitRepository;
 
 require_once __DIR__ . '/../Helpers/GitTestHelpers.php';
@@ -10,18 +9,18 @@ require_once __DIR__ . '/../Helpers/GitTestHelpers.php';
 beforeEach(function () {
     $this->tempDir = sys_get_temp_dir() . '/whatsdiff-test-' . uniqid();
     mkdir($this->tempDir, 0755, true);
-    
+
     // Store original directory to restore later
     $this->originalDir = getcwd();
-    
+
     // Change to temp directory before running git commands
     chdir($this->tempDir);
-    
+
     // Initialize git repository
     runCommand('git init');
     runCommand('git config user.email "test@example.com"');
     runCommand('git config user.name "Test User"');
-    
+
     $this->gitRepository = new GitRepository();
 });
 
@@ -30,7 +29,7 @@ afterEach(function () {
     if (isset($this->originalDir)) {
         chdir($this->originalDir);
     }
-    
+
     // Clean up temporary directory with Windows-specific handling
     if (is_dir($this->tempDir)) {
         if (PHP_OS_FAMILY === 'Windows') {
@@ -117,8 +116,8 @@ it('handles npm only changes with add, update, downgrade, and remove', function 
 
     // Run whatsdiff with JSON output
     $output = runWhatsDiff(['--format=json']);
-    
-    
+
+
     $result = json_decode($output, true);
 
     // Debug output if null
@@ -138,10 +137,10 @@ it('handles npm only changes with add, update, downgrade, and remove', function 
     expect($result)->toHaveKey('diffs');
     expect($result['diffs'])->toHaveCount(1);
     expect($result['diffs'][0]['type'])->toBe('npmjs');
-    
+
     $changes = collect($result['diffs'][0]['changes']);
-    
-    // Check for added package  
+
+    // Check for added package
     $addedPackage = $changes->firstWhere('status', 'added');
     expect($addedPackage)->not->toBeNull();
     expect($addedPackage['name'])->toBe('react');
@@ -265,9 +264,9 @@ it('handles composer only changes', function () {
     expect($result)->toHaveKey('diffs');
     expect($result['diffs'])->toHaveCount(1);
     expect($result['diffs'][0]['type'])->toBe('composer');
-    
+
     $changes = collect($result['diffs'][0]['changes']);
-    
+
     // Verify all expected changes
     expect($changes->where('status', 'added')->count())->toBe(1);
     expect($changes->where('status', 'updated')->count())->toBe(1);
@@ -395,4 +394,3 @@ it('shows no changes when there are several commits without dependency updates',
         expect($result['has_uncommitted_changes'])->toBeFalse();
     }
 });
-

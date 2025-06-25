@@ -96,7 +96,7 @@ it('calculates diff with valid json', function () {
     $result = $this->analyzer->calculateDiff($currentLock, $previousLock);
 
     expect($result)->toHaveCount(3);
-    
+
     // Updated package
     expect($result['symfony/console'])->toBe([
         'name' => 'symfony/console',
@@ -218,7 +218,7 @@ it('gets private repository url with authentication', function () {
     // Create temporary auth.json for testing
     $tempDir = sys_get_temp_dir() . '/whatsdiff-test-' . uniqid();
     mkdir($tempDir);
-    
+
     $authContent = [
         'http-basic' => [
             'repo.packagist.com' => [
@@ -227,9 +227,9 @@ it('gets private repository url with authentication', function () {
             ],
         ],
     ];
-    
+
     file_put_contents($tempDir . '/auth.json', json_encode($authContent));
-    
+
     // Change to temp directory temporarily
     $originalDir = getcwd();
     chdir($tempDir);
@@ -296,7 +296,7 @@ it('loads auth json from local and global files', function () {
 
     // Set environment variable
     putenv("HOME={$homeDir}");
-    
+
     $originalDir = getcwd();
     chdir($tempDir);
 
@@ -314,7 +314,7 @@ it('loads auth json from local and global files', function () {
             'username' => 'local-user',
             'password' => 'local-pass',
         ]);
-        
+
         // Global auth may or may not be present depending on environment
         if (isset($result['http-basic']['global.example.com'])) {
             expect($result['http-basic']['global.example.com'])->toBe([
