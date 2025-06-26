@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Whatsdiff\Outputs;
 
 use Symfony\Component\Console\Output\OutputInterface;
+use Whatsdiff\Analyzers\PackageManagerType;
 use Whatsdiff\Data\ChangeStatus;
 use Whatsdiff\Data\DependencyDiff;
 use Whatsdiff\Data\DiffResult;
@@ -22,7 +23,9 @@ class TextOutput implements OutputFormatterInterface
     public function format(DiffResult $result, OutputInterface $output): void
     {
         if (!$result->hasDiffs()) {
-            $filenameList = collect(['composer.lock', 'package-lock.json'])->implode(', ');
+            $filenameList = collect(PackageManagerType::cases())
+                ->map(fn ($type) => $type->getLockFileName())
+                ->implode(', ');
             $output->writeln("No recent changes and no commit logs found for {$filenameList}");
             return;
         }

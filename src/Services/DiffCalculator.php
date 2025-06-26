@@ -19,22 +19,7 @@ class DiffCalculator
     private ComposerAnalyzer $composerAnalyzer;
     private NpmAnalyzer $npmAnalyzer;
 
-    private array $dependencyFiles = [
-        'composer' => [
-            'file' => 'composer.lock',
-            'type' => PackageManagerType::COMPOSER->value,
-            'hasBeenRecentlyUpdated' => false,
-            'hasCommitLogs' => false,
-            'commitLogs' => [],
-        ],
-        'npmjs' => [
-            'file' => 'package-lock.json',
-            'type' => PackageManagerType::NPM->value,
-            'hasBeenRecentlyUpdated' => false,
-            'hasCommitLogs' => false,
-            'commitLogs' => [],
-        ],
-    ];
+    private array $dependencyFiles = [];
 
     public function __construct(
         GitRepository $git,
@@ -44,6 +29,20 @@ class DiffCalculator
         $this->git = $git;
         $this->composerAnalyzer = $composerAnalyzer;
         $this->npmAnalyzer = $npmAnalyzer;
+        $this->initializeDependencyFilesStructure();
+    }
+
+    private function initializeDependencyFilesStructure(): void
+    {
+        foreach (PackageManagerType::cases() as $type) {
+            $this->dependencyFiles[$type->value] = [
+                'file' => $type->getLockFileName(),
+                'type' => $type->value,
+                'hasBeenRecentlyUpdated' => false,
+                'hasCommitLogs' => false,
+                'commitLogs' => [],
+            ];
+        }
     }
 
     public function calculateDiffs(bool $ignoreLast, bool $skipReleaseCount = false): DiffResult
@@ -180,9 +179,10 @@ class DiffCalculator
 
     private function calculatePackageDiff(string $type, string $last, ?string $previous): array
     {
-        return match ($type) {
-            'composer' => $this->composerAnalyzer->calculateDiff($last, $previous),
-            'npmjs' => $this->npmAnalyzer->calculateDiff($last, $previous),
+        $packageManagerType = PackageManagerType::fromValue($type);
+        return match ($packageManagerType) {
+            PackageManagerType::COMPOSER => $this->composerAnalyzer->calculateDiff($last, $previous),
+            PackageManagerType::NPM => $this->npmAnalyzer->calculateDiff($last, $previous),
             default => [],
         };
     }
@@ -232,14 +232,15 @@ class DiffCalculator
 
     private function getReleasesCount(string $type, string $package, array $infos): int
     {
-        return match ($type) {
-            'composer' => $this->composerAnalyzer->getReleasesCount(
+        $packageManagerType = PackageManagerType::fromValue($type);
+        return match ($packageManagerType) {
+            PackageManagerType::COMPOSER => $this->composerAnalyzer->getReleasesCount(
                 $package,
                 $infos['from'],
                 $infos['to'],
                 $infos['infos_url']
             ),
-            'npmjs' => $this->npmAnalyzer->getReleasesCount($package, $infos['from'], $infos['to']),
+            PackageManagerType::NPM => $this->npmAnalyzer->getReleasesCount($package, $infos['from'], $infos['to']),
             default => 0,
         };
     }

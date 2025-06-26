@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Whatsdiff\Services;
 
 use Composer\Semver\Comparator;
+use Whatsdiff\Analyzers\PackageManagerType;
 
 class PackageInfoFetcher
 {
@@ -38,7 +39,7 @@ class PackageInfoFetcher
 
     public function getNpmReleases(string $package, string $from, string $to): array
     {
-        $url = 'https://registry.npmjs.org/' . urlencode($package);
+        $url = PackageManagerType::NPM->getRegistryUrl($package);
         $packageInfos = file_get_contents($url);
 
         if ($packageInfos === false) {
