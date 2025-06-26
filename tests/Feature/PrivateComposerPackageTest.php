@@ -3,51 +3,13 @@
 declare(strict_types=1);
 
 
-require_once __DIR__ . '/../Helpers/GitTestHelpers.php';
 
 beforeEach(function () {
-    $this->tempDir = sys_get_temp_dir() . '/whatsdiff-private-test-' . uniqid();
-    mkdir($this->tempDir, 0755, true);
-
-    // Store original directory to restore later
-    $this->originalDir = getcwd();
-
-    // Change to temp directory before running git commands
-    chdir($this->tempDir);
-
-    // Initialize git repository
-    runCommand('git init');
-    runCommand('git config user.email "test@example.com"');
-    runCommand('git config user.name "Test User"');
+    $this->tempDir = initTempDirectory();
 });
 
 afterEach(function () {
-    // Restore original directory
-    if (isset($this->originalDir)) {
-        chdir($this->originalDir);
-    }
-
-    // Clean up temporary directory with Windows-specific handling
-    if (is_dir($this->tempDir)) {
-        if (PHP_OS_FAMILY === 'Windows') {
-            // On Windows, sometimes files are locked by git/processes, so try a few times
-            for ($i = 0; $i < 3; $i++) {
-                try {
-                    runCommand("rmdir /s /q \"{$this->tempDir}\"");
-                    break; // Success, exit loop
-                } catch (\RuntimeException $e) {
-                    if ($i < 2) { // Not the last attempt
-                        usleep(500000); // Wait 0.5 seconds
-                        continue;
-                    }
-                    // Last attempt failed, just warn
-                    echo "Warning: Could not clean up temp directory after 3 attempts: " . $this->tempDir . "\n";
-                }
-            }
-        } else {
-            runCommand("rm -rf \"{$this->tempDir}\"");
-        }
-    }
+    cleanupTempDirectory($this->tempDir);
 });
 
 it('handles private composer packages with authentication', function () {
@@ -148,7 +110,8 @@ it('handles private composer packages with authentication', function () {
     runCommand('git commit -m "Update both private and public packages"');
 
     // Run whatsdiff with JSON output
-    $output = runWhatsDiff(['--format=json']);
+    $process = runWhatsDiff(['--format=json']);
+    $output = $process->getOutput();
     $result = json_decode($output, true);
 
     // Debug output if null
@@ -227,7 +190,8 @@ it('handles private packages without authentication gracefully', function () {
     runCommand('git commit -m "Update private package"');
 
     // Run whatsdiff - should still work but without release count info
-    $output = runWhatsDiff(['--format=json']);
+    $process = runWhatsDiff(['--format=json']);
+    $output = $process->getOutput();
     $result = json_decode($output, true);
 
     // Debug output if null
@@ -312,7 +276,8 @@ it('prioritizes local auth.json over global auth.json', function () {
     runCommand('git commit -m "Update private package"');
 
     // Test that analyzer uses local auth (we can't easily test the exact URL construction in integration test)
-    $output = runWhatsDiff(['--format=json']);
+    $process = runWhatsDiff(['--format=json']);
+    $output = $process->getOutput();
     $result = json_decode($output, true);
 
     // Debug output if null
