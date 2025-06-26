@@ -20,6 +20,20 @@ test('help command works', function () {
     expect($process->getOutput())->toContain('--ignore-last');
 });
 
+test('list command works', function () {
+    $processService = new ProcessService();
+    $process = $processService->php(['bin/whatsdiff', 'list']);
+
+    expect($process->getExitCode())->toBe(0);
+    $outputString = $process->getOutput() . $process->getErrorOutput();
+
+    // Should contain some package names or "No recent changes"
+    expect($outputString)->toContain('check')
+        ->and($outputString)->toContain('diff')
+        ->and($outputString)->toContain('list')
+        ->and($outputString)->toContain('help');
+});
+
 test('main command executes without errors', function () {
     // Test without --ignore-last to avoid git history dependencies in CI
     $processService = new ProcessService();

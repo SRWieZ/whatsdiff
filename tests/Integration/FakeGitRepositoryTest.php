@@ -5,7 +5,7 @@ declare(strict_types=1);
 use Whatsdiff\Services\GitRepository;
 
 beforeEach(function () {
-    $this->tempDir = initTempDirectory(true);
+    $this->tempDir = initTempDirectory();
     $this->gitRepository = new GitRepository();
 });
 
@@ -40,8 +40,8 @@ it('handles npm only changes with add, update, downgrade, and remove', function 
     ];
 
     file_put_contents($this->tempDir . '/package-lock.json', json_encode($initialPackageLock, JSON_PRETTY_PRINT));
-    runCommand('git add package-lock.json', $this->tempDir);
-    runCommand('git commit -m "Initial package-lock.json"', $this->tempDir);
+    runCommand('git add package-lock.json');
+    runCommand('git commit -m "Initial package-lock.json"');
 
     // Update package-lock.json: add new package, update existing, downgrade one, remove one
     $updatedPackageLock = [
@@ -70,12 +70,12 @@ it('handles npm only changes with add, update, downgrade, and remove', function 
     ];
 
     file_put_contents($this->tempDir . '/package-lock.json', json_encode($updatedPackageLock, JSON_PRETTY_PRINT));
-    runCommand('git add package-lock.json', $this->tempDir);
-    runCommand('git commit -m "Update npm dependencies"', $this->tempDir);
+    runCommand('git add package-lock.json');
+    runCommand('git commit -m "Update npm dependencies"');
 
 
     // Run whatsdiff with JSON output
-    $process = runWhatsDiff(['--format=json'], $this->tempDir);
+    $process = runWhatsDiff(['--format=json']);
     $output = $process->getOutput();
 
 
@@ -167,8 +167,8 @@ it('handles composer only changes', function () {
     ];
 
     file_put_contents($this->tempDir . '/composer.lock', json_encode($initialComposerLock, JSON_PRETTY_PRINT));
-    runCommand('git add composer.lock', $this->tempDir);
-    runCommand('git commit -m "Initial composer.lock"', $this->tempDir);
+    runCommand('git add composer.lock');
+    runCommand('git commit -m "Initial composer.lock"');
 
     // Update composer.lock
     $updatedComposerLock = [
@@ -209,11 +209,11 @@ it('handles composer only changes', function () {
     ];
 
     file_put_contents($this->tempDir . '/composer.lock', json_encode($updatedComposerLock, JSON_PRETTY_PRINT));
-    runCommand('git add composer.lock', $this->tempDir);
-    runCommand('git commit -m "Update composer dependencies"', $this->tempDir);
+    runCommand('git add composer.lock');
+    runCommand('git commit -m "Update composer dependencies"');
 
     // Run whatsdiff with JSON output
-    $process = runWhatsDiff(['--format=json'], $this->tempDir);
+    $process = runWhatsDiff(['--format=json']);
     $output = $process->getOutput();
     $result = json_decode($output, true);
 
@@ -261,8 +261,8 @@ it('handles both composer and npm changes across multiple commits', function () 
 
     file_put_contents($this->tempDir . '/composer.lock', json_encode($initialComposerLock, JSON_PRETTY_PRINT));
     file_put_contents($this->tempDir . '/package-lock.json', json_encode($initialPackageLock, JSON_PRETTY_PRINT));
-    runCommand('git add .', $this->tempDir);
-    runCommand('git commit -m "Initial state"', $this->tempDir);
+    runCommand('git add .');
+    runCommand('git commit -m "Initial state"');
 
     // First commit: Update composer only
     $updatedComposerLock = [
@@ -277,12 +277,12 @@ it('handles both composer and npm changes across multiple commits', function () 
     ];
 
     file_put_contents($this->tempDir . '/composer.lock', json_encode($updatedComposerLock, JSON_PRETTY_PRINT));
-    runCommand('git add composer.lock', $this->tempDir);
-    runCommand('git commit -m "Update composer dependencies"', $this->tempDir);
+    runCommand('git add composer.lock');
+    runCommand('git commit -m "Update composer dependencies"');
 
     // Second commit: Update npm only (2 commits after composer)
-    runCommand('git commit --allow-empty -m "Empty commit 1"', $this->tempDir);
-    runCommand('git commit --allow-empty -m "Empty commit 2"', $this->tempDir);
+    runCommand('git commit --allow-empty -m "Empty commit 1"');
+    runCommand('git commit --allow-empty -m "Empty commit 2"');
 
     $updatedPackageLock = [
         'name' => 'test-project',
@@ -295,11 +295,11 @@ it('handles both composer and npm changes across multiple commits', function () 
     ];
 
     file_put_contents($this->tempDir . '/package-lock.json', json_encode($updatedPackageLock, JSON_PRETTY_PRINT));
-    runCommand('git add package-lock.json', $this->tempDir);
-    runCommand('git commit -m "Update npm dependencies"', $this->tempDir);
+    runCommand('git add package-lock.json');
+    runCommand('git commit -m "Update npm dependencies"');
 
     // Run whatsdiff
-    $process = runWhatsDiff(['--format=json'], $this->tempDir);
+    $process = runWhatsDiff(['--format=json']);
     $output = $process->getOutput();
     $result = json_decode($output, true);
 
@@ -330,18 +330,18 @@ it('shows no changes when there are several commits without dependency updates',
     ];
 
     file_put_contents($this->tempDir . '/composer.lock', json_encode($initialComposerLock, JSON_PRETTY_PRINT));
-    runCommand('git add composer.lock', $this->tempDir);
-    runCommand('git commit -m "Initial composer.lock"', $this->tempDir);
+    runCommand('git add composer.lock');
+    runCommand('git commit -m "Initial composer.lock"');
 
     // Add several commits without dependency changes
     for ($i = 1; $i <= 5; $i++) {
         file_put_contents($this->tempDir . "/file{$i}.txt", "Content {$i}");
-        runCommand("git add file{$i}.txt", $this->tempDir);
-        runCommand("git commit -m 'Add file {$i}'", $this->tempDir);
+        runCommand("git add file{$i}.txt");
+        runCommand("git commit -m 'Add file {$i}'");
     }
 
     // Run whatsdiff
-    $process = runWhatsDiff(['--format=json'], $this->tempDir);
+    $process = runWhatsDiff(['--format=json']);
     $output = $process->getOutput();
     $result = json_decode($output, true);
 
