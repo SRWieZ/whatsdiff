@@ -79,7 +79,7 @@ class ComposerAnalyzer
     private function getPackageUrl(string $name, array $composerLock): string
     {
         // Default packagist url
-        $url = 'https://repo.packagist.org/p2/' . $name . '.json';
+        $url = PackageManagerType::COMPOSER->getRegistryUrl($name);
 
         $packageInfo = collect($composerLock['packages'] ?? [])
             ->merge($composerLock['packages-dev'] ?? [])

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Whatsdiff\Data;
 
 use Illuminate\Support\Collection;
+use Whatsdiff\Analyzers\PackageManagerType;
 
 final readonly class DependencyDiff
 {
@@ -13,7 +14,7 @@ final readonly class DependencyDiff
      */
     public function __construct(
         public string $filename,
-        public string $type,
+        public PackageManagerType $type,
         public ?string $fromCommit,
         public ?string $toCommit,
         public Collection $changes,

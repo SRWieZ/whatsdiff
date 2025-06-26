@@ -78,7 +78,7 @@ class TuiCommand extends Command
             foreach ($diff->changes as $change) {
                 $packages[] = [
                     'name' => $change->name,
-                    'type' => $change->type,
+                    'type' => $change->type->value,
                     'from' => $change->from,
                     'to' => $change->to,
                     'status' => $change->status->value,

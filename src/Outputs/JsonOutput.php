@@ -17,13 +17,13 @@ class JsonOutput implements OutputFormatterInterface
             'has_uncommitted_changes' => $result->hasUncommittedChanges,
             'diffs' => $result->diffs->map(fn (DependencyDiff $diff) => [
                 'filename' => $diff->filename,
-                'type' => $diff->type,
+                'type' => $diff->type->value,
                 'from_commit' => $diff->fromCommit,
                 'to_commit' => $diff->toCommit,
                 'is_new' => $diff->isNew,
                 'changes' => $diff->changes->map(fn (PackageChange $change) => [
                     'name' => $change->name,
-                    'type' => $change->type,
+                    'type' => $change->type->value,
                     'from' => $change->from,
                     'to' => $change->to,
                     'status' => $change->status->value,
