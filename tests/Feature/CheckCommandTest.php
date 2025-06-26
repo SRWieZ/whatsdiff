@@ -246,9 +246,16 @@ it('returns false when package has no changes', function () {
     runCommand('git commit -m "Initial composer.lock"');
 
     // Create another commit with the SAME composer.lock (no actual changes)
-    file_put_contents($this->tempDir . '/composer.lock', json_encode($initialComposerLock, JSON_PRETTY_PRINT));
+    $newComposerLock = $initialComposerLock;
+    $newComposerLock['content-hash'] = 'def456';
+    $newComposerLock['packages'][] = [
+        'name' => 'symfony/process',
+        'version' => 'v5.4.0',
+        'source' => ['type' => 'git', 'url' => 'https://github.com/symfony/process.git'],
+    ];
+    file_put_contents($this->tempDir . '/composer.lock', json_encode($newComposerLock, JSON_PRETTY_PRINT));
     runCommand('git add composer.lock');
-    runCommand('git commit -m "Re-commit same composer.lock"');
+    runCommand('git commit -m "Added symfony/process"');
 
     // Add some commits without dependency changes
     file_put_contents($this->tempDir . '/README.md', '# Test Project');
