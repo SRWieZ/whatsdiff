@@ -3,8 +3,7 @@
 declare(strict_types=1);
 
 use Symfony\Component\Console\Command\Command;
-use Symfony\Component\Console\Tester\CommandTester;
-use Whatsdiff\Application;
+use Whatsdiff\Services\ProcessService;
 
 require_once __DIR__ . '/../Helpers/GitTestHelpers.php';
 
@@ -78,24 +77,22 @@ it('detects package updates', function () {
     runCommand('git add composer.lock');
     runCommand('git commit -m "Update symfony/console"');
 
-    $app = new Application();
-    $command = $app->find('check');
-    $commandTester = new CommandTester($command);
+    $processService = new ProcessService();
 
     // Test checking for any change
-    $commandTester->execute(['package' => 'symfony/console']);
-    expect($commandTester->getStatusCode())->toBe(Command::SUCCESS);
-    expect($commandTester->getDisplay())->toBe('true' . PHP_EOL);
+    $process = $processService->php([realpath(__DIR__ . '/../../bin/whatsdiff'), 'check', 'symfony/console'], $this->tempDir);
+    expect($process->getExitCode())->toBe(Command::SUCCESS);
+    expect($process->getOutput())->toBe('true' . PHP_EOL);
 
     // Test checking for update
-    $commandTester->execute(['package' => 'symfony/console', '--is-updated' => true]);
-    expect($commandTester->getStatusCode())->toBe(Command::SUCCESS);
-    expect($commandTester->getDisplay())->toBe('true' . PHP_EOL);
+    $process = $processService->php([realpath(__DIR__ . '/../../bin/whatsdiff'), 'check', 'symfony/console', '--is-updated'], $this->tempDir);
+    expect($process->getExitCode())->toBe(Command::SUCCESS);
+    expect($process->getOutput())->toBe('true' . PHP_EOL);
 
     // Test checking for downgrade (should be false)
-    $commandTester->execute(['package' => 'symfony/console', '--is-downgraded' => true]);
-    expect($commandTester->getStatusCode())->toBe(Command::FAILURE);
-    expect($commandTester->getDisplay())->toBe('false' . PHP_EOL);
+    $process = $processService->php([realpath(__DIR__ . '/../../bin/whatsdiff'), 'check', 'symfony/console', '--is-downgraded'], $this->tempDir);
+    expect($process->getExitCode())->toBe(Command::FAILURE);
+    expect($process->getOutput())->toBe('false' . PHP_EOL);
 });
 
 it('detects package downgrades', function () {
@@ -124,19 +121,17 @@ it('detects package downgrades', function () {
     runCommand('git add composer.lock');
     runCommand('git commit -m "Downgrade laravel/framework"');
 
-    $app = new Application();
-    $command = $app->find('check');
-    $commandTester = new CommandTester($command);
+    $processService = new ProcessService();
 
     // Test checking for downgrade
-    $commandTester->execute(['package' => 'laravel/framework', '--is-downgraded' => true]);
-    expect($commandTester->getStatusCode())->toBe(Command::SUCCESS);
-    expect($commandTester->getDisplay())->toBe('true' . PHP_EOL);
+    $process = $processService->php([realpath(__DIR__ . '/../../bin/whatsdiff'), 'check', 'laravel/framework', '--is-downgraded'], $this->tempDir);
+    expect($process->getExitCode())->toBe(Command::SUCCESS);
+    expect($process->getOutput())->toBe('true' . PHP_EOL);
 
     // Test checking for update (should be false)
-    $commandTester->execute(['package' => 'laravel/framework', '--is-updated' => true]);
-    expect($commandTester->getStatusCode())->toBe(Command::FAILURE);
-    expect($commandTester->getDisplay())->toBe('false' . PHP_EOL);
+    $process = $processService->php([realpath(__DIR__ . '/../../bin/whatsdiff'), 'check', 'laravel/framework', '--is-updated'], $this->tempDir);
+    expect($process->getExitCode())->toBe(Command::FAILURE);
+    expect($process->getOutput())->toBe('false' . PHP_EOL);
 });
 
 it('detects package additions', function () {
@@ -168,19 +163,17 @@ it('detects package additions', function () {
     runCommand('git add composer.lock');
     runCommand('git commit -m "Add monolog/monolog"');
 
-    $app = new Application();
-    $command = $app->find('check');
-    $commandTester = new CommandTester($command);
+    $processService = new ProcessService();
 
     // Test checking for addition
-    $commandTester->execute(['package' => 'monolog/monolog', '--is-added' => true]);
-    expect($commandTester->getStatusCode())->toBe(Command::SUCCESS);
-    expect($commandTester->getDisplay())->toBe('true' . PHP_EOL);
+    $process = $processService->php([realpath(__DIR__ . '/../../bin/whatsdiff'), 'check', 'monolog/monolog', '--is-added'], $this->tempDir);
+    expect($process->getExitCode())->toBe(Command::SUCCESS);
+    expect($process->getOutput())->toBe('true' . PHP_EOL);
 
     // Test checking for removal (should be false)
-    $commandTester->execute(['package' => 'monolog/monolog', '--is-removed' => true]);
-    expect($commandTester->getStatusCode())->toBe(Command::FAILURE);
-    expect($commandTester->getDisplay())->toBe('false' . PHP_EOL);
+    $process = $processService->php([realpath(__DIR__ . '/../../bin/whatsdiff'), 'check', 'monolog/monolog', '--is-removed'], $this->tempDir);
+    expect($process->getExitCode())->toBe(Command::FAILURE);
+    expect($process->getOutput())->toBe('false' . PHP_EOL);
 });
 
 it('detects package removals', function () {
@@ -212,19 +205,17 @@ it('detects package removals', function () {
     runCommand('git add composer.lock');
     runCommand('git commit -m "Remove guzzlehttp/guzzle"');
 
-    $app = new Application();
-    $command = $app->find('check');
-    $commandTester = new CommandTester($command);
+    $processService = new ProcessService();
 
     // Test checking for removal
-    $commandTester->execute(['package' => 'guzzlehttp/guzzle', '--is-removed' => true]);
-    expect($commandTester->getStatusCode())->toBe(Command::SUCCESS);
-    expect($commandTester->getDisplay())->toBe('true' . PHP_EOL);
+    $process = $processService->php([realpath(__DIR__ . '/../../bin/whatsdiff'), 'check', 'guzzlehttp/guzzle', '--is-removed'], $this->tempDir);
+    expect($process->getExitCode())->toBe(Command::SUCCESS);
+    expect($process->getOutput())->toBe('true' . PHP_EOL);
 
     // Test checking for addition (should be false)
-    $commandTester->execute(['package' => 'guzzlehttp/guzzle', '--is-added' => true]);
-    expect($commandTester->getStatusCode())->toBe(Command::FAILURE);
-    expect($commandTester->getDisplay())->toBe('false' . PHP_EOL);
+    $process = $processService->php([realpath(__DIR__ . '/../../bin/whatsdiff'), 'check', 'guzzlehttp/guzzle', '--is-added'], $this->tempDir);
+    expect($process->getExitCode())->toBe(Command::FAILURE);
+    expect($process->getOutput())->toBe('false' . PHP_EOL);
 });
 
 it('returns false when package has no changes', function () {
@@ -262,14 +253,12 @@ it('returns false when package has no changes', function () {
     runCommand('git add README.md');
     runCommand('git commit -m "Add README"');
 
-    $app = new Application();
-    $command = $app->find('check');
-    $commandTester = new CommandTester($command);
+    $processService = new ProcessService();
 
     // Test checking for any change - should be false since symfony/console hasn't actually changed
-    $commandTester->execute(['package' => 'symfony/console']);
-    expect($commandTester->getStatusCode())->toBe(Command::FAILURE);
-    expect($commandTester->getDisplay())->toBe('false' . PHP_EOL);
+    $process = $processService->php([realpath(__DIR__ . '/../../bin/whatsdiff'), 'check', 'symfony/console'], $this->tempDir);
+    expect($process->getExitCode())->toBe(Command::FAILURE);
+    expect($process->getOutput())->toBe('false' . PHP_EOL);
 });
 
 it('supports quiet mode', function () {
@@ -298,19 +287,17 @@ it('supports quiet mode', function () {
     runCommand('git add composer.lock');
     runCommand('git commit -m "Update symfony/console"');
 
-    $app = new Application();
-    $command = $app->find('check');
-    $commandTester = new CommandTester($command);
+    $processService = new ProcessService();
 
     // Test quiet mode
-    $commandTester->execute(['package' => 'symfony/console', '--quiet' => true]);
-    expect($commandTester->getStatusCode())->toBe(Command::SUCCESS);
-    expect($commandTester->getDisplay())->toBe('');
+    $process = $processService->php([realpath(__DIR__ . '/../../bin/whatsdiff'), 'check', 'symfony/console', '--quiet'], $this->tempDir);
+    expect($process->getExitCode())->toBe(Command::SUCCESS);
+    expect($process->getOutput())->toBe('');
 
     // Test quiet mode with false result
-    $commandTester->execute(['package' => 'non-existent/package', '--quiet' => true]);
-    expect($commandTester->getStatusCode())->toBe(Command::FAILURE);
-    expect($commandTester->getDisplay())->toBe('');
+    $process = $processService->php([realpath(__DIR__ . '/../../bin/whatsdiff'), 'check', 'non-existent/package', '--quiet'], $this->tempDir);
+    expect($process->getExitCode())->toBe(Command::FAILURE);
+    expect($process->getOutput())->toBe('');
 });
 
 it('works with npm packages', function () {
@@ -340,14 +327,12 @@ it('works with npm packages', function () {
     runCommand('git add package-lock.json');
     runCommand('git commit -m "Update lodash"');
 
-    $app = new Application();
-    $command = $app->find('check');
-    $commandTester = new CommandTester($command);
+    $processService = new ProcessService();
 
     // Test checking npm package update
-    $commandTester->execute(['package' => 'lodash', '--is-updated' => true]);
-    expect($commandTester->getStatusCode())->toBe(Command::SUCCESS);
-    expect($commandTester->getDisplay())->toBe('true' . PHP_EOL);
+    $process = $processService->php([realpath(__DIR__ . '/../../bin/whatsdiff'), 'check', 'lodash', '--is-updated'], $this->tempDir);
+    expect($process->getExitCode())->toBe(Command::SUCCESS);
+    expect($process->getOutput())->toBe('true' . PHP_EOL);
 });
 
 it('returns error code 2 when git repository is not found', function () {
@@ -358,13 +343,12 @@ it('returns error code 2 when git repository is not found', function () {
     chdir($nonGitDir);
 
     try {
-        $app = new Application();
-        $command = $app->find('check');
-        $commandTester = new CommandTester($command);
+        $processService = new ProcessService();
 
-        $commandTester->execute(['package' => 'symfony/console']);
-        expect($commandTester->getStatusCode())->toBe(2);
-        expect($commandTester->getDisplay())->toContain('Error:');
+        $process = $processService->php([realpath(__DIR__ . '/../../bin/whatsdiff'), 'check', 'symfony/console'], $nonGitDir);
+        dump($process->getExitCode(), $process->getOutput(), $process->getErrorOutput());
+        expect($process->getExitCode())->toBe(Command::INVALID);
+        expect($process->getOutput() . $process->getErrorOutput())->toContain('Error:');
     } finally {
         chdir($originalDir);
         rmdir($nonGitDir);

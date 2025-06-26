@@ -81,14 +81,14 @@ class CheckCommand extends Command
         $checkType = $this->determineCheckType($input);
 
         // Initialize services
-        $gitRepository = new GitRepository();
-        $packageInfoFetcher = new PackageInfoFetcher();
-        $composerAnalyzer = new ComposerAnalyzer($packageInfoFetcher);
-        $npmAnalyzer = new NpmAnalyzer($packageInfoFetcher);
-
-        $diffCalculator = new DiffCalculator($gitRepository, $composerAnalyzer, $npmAnalyzer);
-
         try {
+            $gitRepository = new GitRepository();
+            $packageInfoFetcher = new PackageInfoFetcher();
+            $composerAnalyzer = new ComposerAnalyzer($packageInfoFetcher);
+            $npmAnalyzer = new NpmAnalyzer($packageInfoFetcher);
+
+            $diffCalculator = new DiffCalculator($gitRepository, $composerAnalyzer, $npmAnalyzer);
+
             // Calculate diffs - skip release count for performance
             $diffResult = $diffCalculator->calculateDiffs(ignoreLast: false, skipReleaseCount: true);
 
@@ -117,7 +117,7 @@ class CheckCommand extends Command
                 $output->writeln('<error>Error: '.$e->getMessage().'</error>');
             }
 
-            return 2; // Error exit code
+            return Command::INVALID; // Error exit code
         }
     }
 
