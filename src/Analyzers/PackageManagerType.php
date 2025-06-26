@@ -38,12 +38,4 @@ enum PackageManagerType: string
         return array_map(fn (self $type) => $type->getLockFileName(), self::cases());
     }
 
-    public static function fromValue(string $value): ?self
-    {
-        return match ($value) {
-            'composer' => self::COMPOSER,
-            'npmjs' => self::NPM,
-            default => null,
-        };
-    }
 }

@@ -4,11 +4,13 @@ declare(strict_types=1);
 
 namespace Whatsdiff\Data;
 
+use Whatsdiff\Analyzers\PackageManagerType;
+
 final readonly class PackageChange
 {
     public function __construct(
         public string $name,
-        public string $type,
+        public PackageManagerType $type,
         public ?string $from,
         public ?string $to,
         public ChangeStatus $status,
@@ -16,7 +18,7 @@ final readonly class PackageChange
     ) {
     }
 
-    public static function added(string $name, string $type, string $version): self
+    public static function added(string $name, PackageManagerType $type, string $version): self
     {
         return new self(
             name: $name,
@@ -27,7 +29,7 @@ final readonly class PackageChange
         );
     }
 
-    public static function removed(string $name, string $type, string $version): self
+    public static function removed(string $name, PackageManagerType $type, string $version): self
     {
         return new self(
             name: $name,
@@ -40,7 +42,7 @@ final readonly class PackageChange
 
     public static function updated(
         string $name,
-        string $type,
+        PackageManagerType $type,
         string $fromVersion,
         string $toVersion,
         ?int $releaseCount = null
@@ -57,7 +59,7 @@ final readonly class PackageChange
 
     public static function downgraded(
         string $name,
-        string $type,
+        PackageManagerType $type,
         string $fromVersion,
         string $toVersion,
         ?int $releaseCount = null

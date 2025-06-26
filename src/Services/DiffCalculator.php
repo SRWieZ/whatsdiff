@@ -37,7 +37,7 @@ class DiffCalculator
         foreach (PackageManagerType::cases() as $type) {
             $this->dependencyFiles[$type->value] = [
                 'file' => $type->getLockFileName(),
-                'type' => $type->value,
+                'type' => $type,
                 'hasBeenRecentlyUpdated' => false,
                 'hasCommitLogs' => false,
                 'commitLogs' => [],
@@ -61,20 +61,21 @@ class DiffCalculator
             return new DiffResult($diffs, false);
         }
 
-        if ($recentlyUpdated) {
-            $filenames = $dependencyFiles
-                ->where('hasBeenRecentlyUpdated', true)
-                ->pluck('file', 'type')->toArray();
-        } else {
-            $filenames = $dependencyFiles
-                ->where('hasCommitLogs', true)
-                ->pluck('file', 'type')->toArray();
-        }
+        $relevantFiles = $recentlyUpdated
+            ? $dependencyFiles->where('hasBeenRecentlyUpdated', true)
+            : $dependencyFiles->where('hasCommitLogs', true);
 
+        $filenames = $relevantFiles->pluck('file')->toArray();
         $commitLogs = $this->git->getMultipleFilesCommitLogs($filenames);
 
-        foreach ($filenames as $type => $filename) {
-            $diff = $this->processDependencyFile($type, $filename, $recentlyUpdated, $commitLogs, $skipReleaseCount);
+        foreach ($relevantFiles as $fileData) {
+            $diff = $this->processDependencyFile(
+                $fileData['type'],
+                $fileData['file'],
+                $recentlyUpdated,
+                $commitLogs,
+                $skipReleaseCount
+            );
             if ($diff !== null) {
                 $diffs->push($diff);
             }
@@ -108,14 +109,14 @@ class DiffCalculator
     }
 
     private function processDependencyFile(
-        string $type,
+        PackageManagerType $type,
         string $filename,
         bool $recentlyUpdated,
         array $commitLogs,
         bool $skipReleaseCount = false
     ): ?DependencyDiff {
         $commitLogsToCompare = $recentlyUpdated
-            ? $this->dependencyFiles[$type]['commitLogs']
+            ? $this->dependencyFiles[$type->value]['commitLogs']
             : $commitLogs;
 
         [$lastHash, $previousHash] = $this->getCommitHashToCompare($commitLogsToCompare, $recentlyUpdated);
@@ -177,17 +178,15 @@ class DiffCalculator
         return [$last, $previous];
     }
 
-    private function calculatePackageDiff(string $type, string $last, ?string $previous): array
+    private function calculatePackageDiff(PackageManagerType $type, string $last, ?string $previous): array
     {
-        $packageManagerType = PackageManagerType::fromValue($type);
-        return match ($packageManagerType) {
+        return match ($type) {
             PackageManagerType::COMPOSER => $this->composerAnalyzer->calculateDiff($last, $previous),
             PackageManagerType::NPM => $this->npmAnalyzer->calculateDiff($last, $previous),
-            default => [],
         };
     }
 
-    private function convertToPackageChanges(array $diff, string $type, bool $skipReleaseCount = false): Collection
+    private function convertToPackageChanges(array $diff, PackageManagerType $type, bool $skipReleaseCount = false): Collection
     {
         $changes = collect();
 
@@ -230,10 +229,9 @@ class DiffCalculator
         return $changes;
     }
 
-    private function getReleasesCount(string $type, string $package, array $infos): int
+    private function getReleasesCount(PackageManagerType $type, string $package, array $infos): int
     {
-        $packageManagerType = PackageManagerType::fromValue($type);
-        return match ($packageManagerType) {
+        return match ($type) {
             PackageManagerType::COMPOSER => $this->composerAnalyzer->getReleasesCount(
                 $package,
                 $infos['from'],
@@ -241,7 +239,6 @@ class DiffCalculator
                 $infos['infos_url']
             ),
             PackageManagerType::NPM => $this->npmAnalyzer->getReleasesCount($package, $infos['from'], $infos['to']),
-            default => 0,
         };
     }
 }
