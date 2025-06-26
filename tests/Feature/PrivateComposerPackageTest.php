@@ -3,51 +3,13 @@
 declare(strict_types=1);
 
 
-require_once __DIR__ . '/../Helpers/GitTestHelpers.php';
 
 beforeEach(function () {
-    $this->tempDir = sys_get_temp_dir() . '/whatsdiff-private-test-' . uniqid();
-    mkdir($this->tempDir, 0755, true);
-
-    // Store original directory to restore later
-    $this->originalDir = getcwd();
-
-    // Change to temp directory before running git commands
-    chdir($this->tempDir);
-
-    // Initialize git repository
-    runCommand('git init');
-    runCommand('git config user.email "test@example.com"');
-    runCommand('git config user.name "Test User"');
+    $this->tempDir = initTempDirectory(true);
 });
 
 afterEach(function () {
-    // Restore original directory
-    if (isset($this->originalDir)) {
-        chdir($this->originalDir);
-    }
-
-    // Clean up temporary directory with Windows-specific handling
-    if (is_dir($this->tempDir)) {
-        if (PHP_OS_FAMILY === 'Windows') {
-            // On Windows, sometimes files are locked by git/processes, so try a few times
-            for ($i = 0; $i < 3; $i++) {
-                try {
-                    runCommand("rmdir /s /q \"{$this->tempDir}\"");
-                    break; // Success, exit loop
-                } catch (\RuntimeException $e) {
-                    if ($i < 2) { // Not the last attempt
-                        usleep(500000); // Wait 0.5 seconds
-                        continue;
-                    }
-                    // Last attempt failed, just warn
-                    echo "Warning: Could not clean up temp directory after 3 attempts: " . $this->tempDir . "\n";
-                }
-            }
-        } else {
-            runCommand("rm -rf \"{$this->tempDir}\"");
-        }
-    }
+    cleanupTempDirectory($this->tempDir);
 });
 
 it('handles private composer packages with authentication', function () {
@@ -102,8 +64,8 @@ it('handles private composer packages with authentication', function () {
     ];
 
     file_put_contents($this->tempDir . '/composer.lock', json_encode($initialComposerLock, JSON_PRETTY_PRINT));
-    runCommand('git add .');
-    runCommand('git commit -m "Initial composer.lock with private package"');
+    runCommand('git add .', $this->tempDir);
+    runCommand('git commit -m "Initial composer.lock with private package"', $this->tempDir);
 
     // Update composer.lock with new version of private package
     $updatedComposerLock = [
@@ -144,11 +106,11 @@ it('handles private composer packages with authentication', function () {
     ];
 
     file_put_contents($this->tempDir . '/composer.lock', json_encode($updatedComposerLock, JSON_PRETTY_PRINT));
-    runCommand('git add composer.lock');
-    runCommand('git commit -m "Update both private and public packages"');
+    runCommand('git add composer.lock', $this->tempDir);
+    runCommand('git commit -m "Update both private and public packages"', $this->tempDir);
 
     // Run whatsdiff with JSON output
-    $output = runWhatsDiff(['--format=json']);
+    $output = runWhatsDiff(['--format=json'], $this->tempDir);
     $result = json_decode($output, true);
 
     // Debug output if null
@@ -202,8 +164,8 @@ it('handles private packages without authentication gracefully', function () {
     ];
 
     file_put_contents($this->tempDir . '/composer.lock', json_encode($initialComposerLock, JSON_PRETTY_PRINT));
-    runCommand('git add composer.lock');
-    runCommand('git commit -m "Initial composer.lock with private package"');
+    runCommand('git add composer.lock', $this->tempDir);
+    runCommand('git commit -m "Initial composer.lock with private package"', $this->tempDir);
 
     // Update composer.lock
     $updatedComposerLock = [
@@ -223,11 +185,11 @@ it('handles private packages without authentication gracefully', function () {
     ];
 
     file_put_contents($this->tempDir . '/composer.lock', json_encode($updatedComposerLock, JSON_PRETTY_PRINT));
-    runCommand('git add composer.lock');
-    runCommand('git commit -m "Update private package"');
+    runCommand('git add composer.lock', $this->tempDir);
+    runCommand('git commit -m "Update private package"', $this->tempDir);
 
     // Run whatsdiff - should still work but without release count info
-    $output = runWhatsDiff(['--format=json']);
+    $output = runWhatsDiff(['--format=json'], $this->tempDir);
     $result = json_decode($output, true);
 
     // Debug output if null
@@ -300,19 +262,19 @@ it('prioritizes local auth.json over global auth.json', function () {
     ];
 
     file_put_contents($this->tempDir . '/composer.lock', json_encode($composerLock, JSON_PRETTY_PRINT));
-    runCommand('git add .');
-    runCommand('git commit -m "Initial state"');
+    runCommand('git add .', $this->tempDir);
+    runCommand('git commit -m "Initial state"', $this->tempDir);
 
     // Update the package
     $composerLock['content-hash'] = 'xyz789';
     $composerLock['packages'][0]['version'] = 'v1.1.0';
 
     file_put_contents($this->tempDir . '/composer.lock', json_encode($composerLock, JSON_PRETTY_PRINT));
-    runCommand('git add composer.lock');
-    runCommand('git commit -m "Update private package"');
+    runCommand('git add composer.lock', $this->tempDir);
+    runCommand('git commit -m "Update private package"', $this->tempDir);
 
     // Test that analyzer uses local auth (we can't easily test the exact URL construction in integration test)
-    $output = runWhatsDiff(['--format=json']);
+    $output = runWhatsDiff(['--format=json'], $this->tempDir);
     $result = json_decode($output, true);
 
     // Debug output if null

@@ -5,50 +5,12 @@ declare(strict_types=1);
 use Symfony\Component\Console\Command\Command;
 use Whatsdiff\Services\ProcessService;
 
-require_once __DIR__ . '/../Helpers/GitTestHelpers.php';
-
 beforeEach(function () {
-    $this->tempDir = sys_get_temp_dir() . '/whatsdiff-check-test-' . uniqid();
-    mkdir($this->tempDir, 0755, true);
-
-    // Store original directory to restore later
-    $this->originalDir = getcwd();
-
-    // Change to temp directory before running git commands
-    chdir($this->tempDir);
-
-    // Initialize git repository
-    runCommand('git init');
-    runCommand('git config user.email "test@example.com"');
-    runCommand('git config user.name "Test User"');
+    $this->tempDir = initTempDirectory(true);
 });
 
 afterEach(function () {
-    // Restore original directory
-    if (isset($this->originalDir)) {
-        chdir($this->originalDir);
-    }
-
-    // Clean up temporary directory
-    if (is_dir($this->tempDir)) {
-        if (PHP_OS_FAMILY === 'Windows') {
-            // On Windows, sometimes files are locked by git/processes
-            for ($i = 0; $i < 3; $i++) {
-                try {
-                    runCommand("rmdir /s /q \"{$this->tempDir}\"");
-                    break;
-                } catch (\RuntimeException $e) {
-                    if ($i < 2) {
-                        usleep(500000); // Wait 0.5 seconds
-                        continue;
-                    }
-                    echo "Warning: Could not clean up temp directory after 3 attempts: " . $this->tempDir . "\n";
-                }
-            }
-        } else {
-            runCommand("rm -rf \"{$this->tempDir}\"");
-        }
-    }
+    cleanupTempDirectory($this->tempDir);
 });
 
 it('detects package updates', function () {
@@ -66,16 +28,16 @@ it('detects package updates', function () {
     ];
 
     file_put_contents($this->tempDir . '/composer.lock', json_encode($initialComposerLock, JSON_PRETTY_PRINT));
-    runCommand('git add composer.lock');
-    runCommand('git commit -m "Initial composer.lock"');
+    runCommand('git add composer.lock', $this->tempDir);
+    runCommand('git commit -m "Initial composer.lock"', $this->tempDir);
 
     // Update symfony/console
     $updatedComposerLock = $initialComposerLock;
     $updatedComposerLock['packages'][0]['version'] = 'v6.0.0';
 
     file_put_contents($this->tempDir . '/composer.lock', json_encode($updatedComposerLock, JSON_PRETTY_PRINT));
-    runCommand('git add composer.lock');
-    runCommand('git commit -m "Update symfony/console"');
+    runCommand('git add composer.lock', $this->tempDir);
+    runCommand('git commit -m "Update symfony/console"', $this->tempDir);
 
     $processService = new ProcessService();
 
@@ -110,16 +72,16 @@ it('detects package downgrades', function () {
     ];
 
     file_put_contents($this->tempDir . '/composer.lock', json_encode($initialComposerLock, JSON_PRETTY_PRINT));
-    runCommand('git add composer.lock');
-    runCommand('git commit -m "Initial composer.lock"');
+    runCommand('git add composer.lock', $this->tempDir);
+    runCommand('git commit -m "Initial composer.lock"', $this->tempDir);
 
     // Downgrade laravel/framework
     $updatedComposerLock = $initialComposerLock;
     $updatedComposerLock['packages'][0]['version'] = 'v8.0.0';
 
     file_put_contents($this->tempDir . '/composer.lock', json_encode($updatedComposerLock, JSON_PRETTY_PRINT));
-    runCommand('git add composer.lock');
-    runCommand('git commit -m "Downgrade laravel/framework"');
+    runCommand('git add composer.lock', $this->tempDir);
+    runCommand('git commit -m "Downgrade laravel/framework"', $this->tempDir);
 
     $processService = new ProcessService();
 
@@ -143,8 +105,8 @@ it('detects package additions', function () {
     ];
 
     file_put_contents($this->tempDir . '/composer.lock', json_encode($initialComposerLock, JSON_PRETTY_PRINT));
-    runCommand('git add composer.lock');
-    runCommand('git commit -m "Initial composer.lock"');
+    runCommand('git add composer.lock', $this->tempDir);
+    runCommand('git commit -m "Initial composer.lock"', $this->tempDir);
 
     // Add new package
     $updatedComposerLock = [
@@ -160,8 +122,8 @@ it('detects package additions', function () {
     ];
 
     file_put_contents($this->tempDir . '/composer.lock', json_encode($updatedComposerLock, JSON_PRETTY_PRINT));
-    runCommand('git add composer.lock');
-    runCommand('git commit -m "Add monolog/monolog"');
+    runCommand('git add composer.lock', $this->tempDir);
+    runCommand('git commit -m "Add monolog/monolog"', $this->tempDir);
 
     $processService = new ProcessService();
 
@@ -191,8 +153,8 @@ it('detects package removals', function () {
     ];
 
     file_put_contents($this->tempDir . '/composer.lock', json_encode($initialComposerLock, JSON_PRETTY_PRINT));
-    runCommand('git add composer.lock');
-    runCommand('git commit -m "Initial composer.lock"');
+    runCommand('git add composer.lock', $this->tempDir);
+    runCommand('git commit -m "Initial composer.lock"', $this->tempDir);
 
     // Remove the package
     $updatedComposerLock = [
@@ -202,8 +164,8 @@ it('detects package removals', function () {
     ];
 
     file_put_contents($this->tempDir . '/composer.lock', json_encode($updatedComposerLock, JSON_PRETTY_PRINT));
-    runCommand('git add composer.lock');
-    runCommand('git commit -m "Remove guzzlehttp/guzzle"');
+    runCommand('git add composer.lock', $this->tempDir);
+    runCommand('git commit -m "Remove guzzlehttp/guzzle"', $this->tempDir);
 
     $processService = new ProcessService();
 
@@ -233,8 +195,8 @@ it('returns false when package has no changes', function () {
     ];
 
     file_put_contents($this->tempDir . '/composer.lock', json_encode($initialComposerLock, JSON_PRETTY_PRINT));
-    runCommand('git add composer.lock');
-    runCommand('git commit -m "Initial composer.lock"');
+    runCommand('git add composer.lock', $this->tempDir);
+    runCommand('git commit -m "Initial composer.lock"', $this->tempDir);
 
     // Create another commit with the SAME composer.lock (no actual changes)
     $newComposerLock = $initialComposerLock;
@@ -245,13 +207,13 @@ it('returns false when package has no changes', function () {
         'source' => ['type' => 'git', 'url' => 'https://github.com/symfony/process.git'],
     ];
     file_put_contents($this->tempDir . '/composer.lock', json_encode($newComposerLock, JSON_PRETTY_PRINT));
-    runCommand('git add composer.lock');
-    runCommand('git commit -m "Added symfony/process"');
+    runCommand('git add composer.lock', $this->tempDir);
+    runCommand('git commit -m "Added symfony/process"', $this->tempDir);
 
     // Add some commits without dependency changes
     file_put_contents($this->tempDir . '/README.md', '# Test Project');
-    runCommand('git add README.md');
-    runCommand('git commit -m "Add README"');
+    runCommand('git add README.md', $this->tempDir);
+    runCommand('git commit -m "Add README"', $this->tempDir);
 
     $processService = new ProcessService();
 
@@ -276,16 +238,16 @@ it('supports quiet mode', function () {
     ];
 
     file_put_contents($this->tempDir . '/composer.lock', json_encode($initialComposerLock, JSON_PRETTY_PRINT));
-    runCommand('git add composer.lock');
-    runCommand('git commit -m "Initial composer.lock"');
+    runCommand('git add composer.lock', $this->tempDir);
+    runCommand('git commit -m "Initial composer.lock"', $this->tempDir);
 
     // Update package
     $updatedComposerLock = $initialComposerLock;
     $updatedComposerLock['packages'][0]['version'] = 'v6.0.0';
 
     file_put_contents($this->tempDir . '/composer.lock', json_encode($updatedComposerLock, JSON_PRETTY_PRINT));
-    runCommand('git add composer.lock');
-    runCommand('git commit -m "Update symfony/console"');
+    runCommand('git add composer.lock', $this->tempDir);
+    runCommand('git commit -m "Update symfony/console"', $this->tempDir);
 
     $processService = new ProcessService();
 
@@ -316,16 +278,16 @@ it('works with npm packages', function () {
     ];
 
     file_put_contents($this->tempDir . '/package-lock.json', json_encode($initialPackageLock, JSON_PRETTY_PRINT));
-    runCommand('git add package-lock.json');
-    runCommand('git commit -m "Initial package-lock.json"');
+    runCommand('git add package-lock.json', $this->tempDir);
+    runCommand('git commit -m "Initial package-lock.json"', $this->tempDir);
 
     // Update lodash
     $updatedPackageLock = $initialPackageLock;
     $updatedPackageLock['packages']['node_modules/lodash']['version'] = '4.17.21';
 
     file_put_contents($this->tempDir . '/package-lock.json', json_encode($updatedPackageLock, JSON_PRETTY_PRINT));
-    runCommand('git add package-lock.json');
-    runCommand('git commit -m "Update lodash"');
+    runCommand('git add package-lock.json', $this->tempDir);
+    runCommand('git commit -m "Update lodash"', $this->tempDir);
 
     $processService = new ProcessService();
 
@@ -336,11 +298,8 @@ it('works with npm packages', function () {
 });
 
 it('returns error code 2 when git repository is not found', function () {
-    // Change to a non-git directory BEFORE creating the application
-    $nonGitDir = sys_get_temp_dir() . '/non-git-' . uniqid();
-    mkdir($nonGitDir, 0755, true);
-    $originalDir = getcwd();
-    chdir($nonGitDir);
+    // Create a non-git directory
+    $nonGitDir = initTempDirectory(false); // false = do not initialize git
 
     try {
         $processService = new ProcessService();
@@ -350,7 +309,6 @@ it('returns error code 2 when git repository is not found', function () {
         expect($process->getExitCode())->toBe(Command::INVALID);
         expect($process->getOutput() . $process->getErrorOutput())->toContain('Error:');
     } finally {
-        chdir($originalDir);
-        rmdir($nonGitDir);
+        cleanupTempDirectory($nonGitDir);
     }
 });
