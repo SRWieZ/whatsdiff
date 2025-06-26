@@ -46,7 +46,7 @@ class DiffCalculator
         $this->npmAnalyzer = $npmAnalyzer;
     }
 
-    public function calculateDiffs(bool $ignoreLast): DiffResult
+    public function calculateDiffs(bool $ignoreLast, bool $skipReleaseCount = false): DiffResult
     {
         $this->initializeDependencyFiles($ignoreLast);
 
@@ -75,7 +75,7 @@ class DiffCalculator
         $commitLogs = $this->git->getMultipleFilesCommitLogs($filenames);
 
         foreach ($filenames as $type => $filename) {
-            $diff = $this->processDependencyFile($type, $filename, $recentlyUpdated, $commitLogs);
+            $diff = $this->processDependencyFile($type, $filename, $recentlyUpdated, $commitLogs, $skipReleaseCount);
             if ($diff !== null) {
                 $diffs->push($diff);
             }
@@ -94,7 +94,7 @@ class DiffCalculator
             if (!empty($relativeCurrentDir) && file_exists($file['file'])) {
                 $this->dependencyFiles[$key]['file'] = $relativeCurrentDir . DIRECTORY_SEPARATOR . $file['file'];
             }
-            
+
         }
 
         foreach ($this->dependencyFiles as $type => $file) {
@@ -104,7 +104,7 @@ class DiffCalculator
             $commitLogs = $this->git->getFileCommitLogs($file['file']);
             $this->dependencyFiles[$type]['hasCommitLogs'] = !empty($commitLogs);
             $this->dependencyFiles[$type]['commitLogs'] = $commitLogs;
-            
+
         }
     }
 
@@ -112,7 +112,8 @@ class DiffCalculator
         string $type,
         string $filename,
         bool $recentlyUpdated,
-        array $commitLogs
+        array $commitLogs,
+        bool $skipReleaseCount = false
     ): ?DependencyDiff {
         $commitLogsToCompare = $recentlyUpdated
             ? $this->dependencyFiles[$type]['commitLogs']
@@ -143,7 +144,7 @@ class DiffCalculator
         }
 
         $packageDiffs = $this->calculatePackageDiff($type, $last, $previous);
-        $changes = $this->convertToPackageChanges($packageDiffs, $type);
+        $changes = $this->convertToPackageChanges($packageDiffs, $type, $skipReleaseCount);
 
         return new DependencyDiff(
             filename: $filename,
@@ -186,14 +187,14 @@ class DiffCalculator
         };
     }
 
-    private function convertToPackageChanges(array $diff, string $type): Collection
+    private function convertToPackageChanges(array $diff, string $type, bool $skipReleaseCount = false): Collection
     {
         $changes = collect();
 
         foreach ($diff as $package => $infos) {
             if ($infos['from'] !== null && $infos['to'] !== null) {
                 if (Comparator::greaterThan($infos['to'], $infos['from'])) {
-                    $releasesCount = $this->getReleasesCount($type, $package, $infos);
+                    $releasesCount = $skipReleaseCount ? null : $this->getReleasesCount($type, $package, $infos);
                     $changes->push(PackageChange::updated(
                         name: $package,
                         type: $type,
@@ -202,7 +203,7 @@ class DiffCalculator
                         releaseCount: $releasesCount,
                     ));
                 } else {
-                    $releasesCount = $this->getReleasesCount($type, $package, $infos);
+                    $releasesCount = $skipReleaseCount ? null : $this->getReleasesCount($type, $package, $infos);
                     $changes->push(PackageChange::downgraded(
                         name: $package,
                         type: $type,

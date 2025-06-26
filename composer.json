@@ -66,6 +66,6 @@
     "box": "./vendor/bin/box",
     "pint": "./vendor/bin/pint --preset psr12",
     "phpstan": "./vendor/bin/phpstan analyse",
-    "test": "./vendor/bin/pest"
+    "test": "./vendor/bin/pest --parallel"
   }
 }

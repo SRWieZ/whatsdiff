@@ -96,7 +96,7 @@ it('calculates diff with valid json', function () {
     $result = $this->analyzer->calculateDiff($currentLock, $previousLock);
 
     expect($result)->toHaveCount(3);
-    
+
     // Updated package
     expect($result['lodash'])->toBe([
         'name' => 'lodash',
@@ -265,9 +265,9 @@ it('calculates diff with complex changes', function () {
     $result = $this->analyzer->calculateDiff($currentLock, $previousLock);
 
     expect($result)->toHaveCount(5);
-    
+
     $changes = collect($result);
-    
+
     expect($changes->where('from', '!=', null)->where('to', '!=', null)->count())->toBe(3); // Updated/downgraded
     expect($changes->where('from', null)->count())->toBe(1); // Added
     expect($changes->where('to', null)->count())->toBe(1); // Removed

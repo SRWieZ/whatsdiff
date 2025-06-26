@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Whatsdiff;
 
 use Symfony\Component\Console\Application as BaseApplication;
+use Whatsdiff\Commands\CheckCommand;
 use Whatsdiff\Commands\DiffCommand;
 use Whatsdiff\Commands\TuiCommand;
 
@@ -32,6 +33,7 @@ class Application extends BaseApplication
 
         $this->add(new DiffCommand());
         $this->add(new TuiCommand());
+        $this->add(new CheckCommand());
         $this->setDefaultCommand('diff');
     }
 

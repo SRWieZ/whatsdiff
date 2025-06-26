@@ -2,20 +2,19 @@
 
 declare(strict_types=1);
 
-use Symfony\Component\Process\Process as SymfonyProcess;
 
 require_once __DIR__ . '/../Helpers/GitTestHelpers.php';
 
 beforeEach(function () {
     $this->tempDir = sys_get_temp_dir() . '/whatsdiff-private-test-' . uniqid();
     mkdir($this->tempDir, 0755, true);
-    
+
     // Store original directory to restore later
     $this->originalDir = getcwd();
-    
+
     // Change to temp directory before running git commands
     chdir($this->tempDir);
-    
+
     // Initialize git repository
     runCommand('git init');
     runCommand('git config user.email "test@example.com"');
@@ -27,7 +26,7 @@ afterEach(function () {
     if (isset($this->originalDir)) {
         chdir($this->originalDir);
     }
-    
+
     // Clean up temporary directory with Windows-specific handling
     if (is_dir($this->tempDir)) {
         if (PHP_OS_FAMILY === 'Windows') {
@@ -61,7 +60,7 @@ it('handles private composer packages with authentication', function () {
             ],
         ],
     ];
-    
+
     file_put_contents($this->tempDir . '/auth.json', json_encode($authContent, JSON_PRETTY_PRINT));
 
     // Initial composer.lock with private package
@@ -161,19 +160,19 @@ it('handles private composer packages with authentication', function () {
     expect($result)->toHaveKey('diffs');
     expect($result['diffs'])->toHaveCount(1);
     expect($result['diffs'][0]['type'])->toBe('composer');
-    
+
     $changes = collect($result['diffs'][0]['changes']);
-    
+
     // Verify both packages are detected
     expect($changes)->toHaveCount(2);
-    
+
     // Check private package update
     $fluxChange = $changes->firstWhere('name', 'livewire/flux-pro');
     expect($fluxChange)->not->toBeNull();
     expect($fluxChange['status'])->toBe('updated');
     expect($fluxChange['from'])->toBe('v1.0.0');
     expect($fluxChange['to'])->toBe('v1.1.0');
-    
+
     // Check public package update
     $consoleChange = $changes->firstWhere('name', 'symfony/console');
     expect($consoleChange)->not->toBeNull();
@@ -239,10 +238,10 @@ it('handles private packages without authentication gracefully', function () {
     expect($result)->toBeArray();
     expect($result)->toHaveKey('diffs');
     expect($result['diffs'])->toHaveCount(1);
-    
+
     $changes = collect($result['diffs'][0]['changes']);
     $fluxChange = $changes->firstWhere('name', 'livewire/flux-pro');
-    
+
     expect($fluxChange)->not->toBeNull();
     expect($fluxChange['status'])->toBe('updated');
     expect($fluxChange['from'])->toBe('v1.0.0');
@@ -259,7 +258,7 @@ it('prioritizes local auth.json over global auth.json', function () {
         if (!is_dir($globalComposerDir)) {
             mkdir($globalComposerDir, 0755, true);
         }
-        
+
         $globalAuthContent = [
             'http-basic' => [
                 'repo.packagist.com' => [
@@ -268,7 +267,7 @@ it('prioritizes local auth.json over global auth.json', function () {
                 ],
             ],
         ];
-        
+
         $globalAuthPath = $globalComposerDir . '/auth.json';
         file_put_contents($globalAuthPath, json_encode($globalAuthContent, JSON_PRETTY_PRINT));
     }
@@ -282,7 +281,7 @@ it('prioritizes local auth.json over global auth.json', function () {
             ],
         ],
     ];
-    
+
     file_put_contents($this->tempDir . '/auth.json', json_encode($localAuthContent, JSON_PRETTY_PRINT));
 
     // Create composer.lock with private package
@@ -307,7 +306,7 @@ it('prioritizes local auth.json over global auth.json', function () {
     // Update the package
     $composerLock['content-hash'] = 'xyz789';
     $composerLock['packages'][0]['version'] = 'v1.1.0';
-    
+
     file_put_contents($this->tempDir . '/composer.lock', json_encode($composerLock, JSON_PRETTY_PRINT));
     runCommand('git add composer.lock');
     runCommand('git commit -m "Update private package"');
@@ -323,7 +322,7 @@ it('prioritizes local auth.json over global auth.json', function () {
 
     expect($result)->toBeArray();
     expect($result['diffs'])->toHaveCount(1);
-    
+
     $changes = collect($result['diffs'][0]['changes']);
     $fluxChange = $changes->firstWhere('name', 'livewire/flux-pro');
     expect($fluxChange)->not->toBeNull();
@@ -333,4 +332,3 @@ it('prioritizes local auth.json over global auth.json', function () {
         unlink($globalAuthPath);
     }
 });
-
