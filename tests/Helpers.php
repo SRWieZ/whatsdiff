@@ -35,22 +35,26 @@ function cleanupTempDirectory(string $tempDir): void
         return;
     }
 
+    $tempDir = str_replace('/', DIRECTORY_SEPARATOR, $tempDir);
+
     if (PHP_OS_FAMILY === 'Windows') {
-        // On Windows, sometimes files are locked by git/processes, so try a few times
-        for ($i = 0; $i < 3; $i++) {
+        // Use PowerShell Remove-Item with Force - most effective for locked files
+        $process = new SymfonyProcess([
+            'powershell', '-Command',
+            "Remove-Item -Path '$tempDir' -Recurse -Force -ErrorAction SilentlyContinue"
+        ]);
+        $process->setTimeout(30);
+        $process->run();
+
+        // If PowerShell fails, try standard rmdir as backup
+        if (!$process->isSuccessful() && is_dir($tempDir)) {
             $process = new SymfonyProcess(['cmd', '/c', 'rmdir', '/s', '/q', $tempDir]);
             $process->run();
+        }
 
-            if ($process->isSuccessful()) {
-                return;
-            }
-
-            if ($i < 2) { // Not the last attempt
-                usleep(500000); // Wait 0.5 seconds
-            } else {
-                // Last attempt failed, just warn
-                echo "Warning: Could not clean up temp directory after 3 attempts: ".$tempDir."\n";
-            }
+        // Final check and warning
+        if (is_dir($tempDir)) {
+            echo "Warning: Could not clean up temp directory: ".$tempDir."\n";
         }
     } else {
         $process = new SymfonyProcess(['rm', '-rf', $tempDir]);
