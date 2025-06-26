@@ -75,7 +75,8 @@ it('handles npm only changes with add, update, downgrade, and remove', function 
 
 
     // Run whatsdiff with JSON output
-    $output = runWhatsDiff(['--format=json'], $this->tempDir);
+    $process = runWhatsDiff(['--format=json'], $this->tempDir);
+    $output = $process->getOutput();
 
 
     $result = json_decode($output, true);
@@ -212,7 +213,8 @@ it('handles composer only changes', function () {
     runCommand('git commit -m "Update composer dependencies"', $this->tempDir);
 
     // Run whatsdiff with JSON output
-    $output = runWhatsDiff(['--format=json'], $this->tempDir);
+    $process = runWhatsDiff(['--format=json'], $this->tempDir);
+    $output = $process->getOutput();
     $result = json_decode($output, true);
 
     // Debug output if null
@@ -297,7 +299,8 @@ it('handles both composer and npm changes across multiple commits', function () 
     runCommand('git commit -m "Update npm dependencies"', $this->tempDir);
 
     // Run whatsdiff
-    $output = runWhatsDiff(['--format=json'], $this->tempDir);
+    $process = runWhatsDiff(['--format=json'], $this->tempDir);
+    $output = $process->getOutput();
     $result = json_decode($output, true);
 
     // Debug output if null
@@ -338,7 +341,8 @@ it('shows no changes when there are several commits without dependency updates',
     }
 
     // Run whatsdiff
-    $output = runWhatsDiff(['--format=json'], $this->tempDir);
+    $process = runWhatsDiff(['--format=json'], $this->tempDir);
+    $output = $process->getOutput();
     $result = json_decode($output, true);
 
     // Debug output if null

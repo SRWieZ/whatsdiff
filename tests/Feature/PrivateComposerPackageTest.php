@@ -110,7 +110,8 @@ it('handles private composer packages with authentication', function () {
     runCommand('git commit -m "Update both private and public packages"', $this->tempDir);
 
     // Run whatsdiff with JSON output
-    $output = runWhatsDiff(['--format=json'], $this->tempDir);
+    $process = runWhatsDiff(['--format=json'], $this->tempDir);
+    $output = $process->getOutput();
     $result = json_decode($output, true);
 
     // Debug output if null
@@ -189,7 +190,8 @@ it('handles private packages without authentication gracefully', function () {
     runCommand('git commit -m "Update private package"', $this->tempDir);
 
     // Run whatsdiff - should still work but without release count info
-    $output = runWhatsDiff(['--format=json'], $this->tempDir);
+    $process = runWhatsDiff(['--format=json'], $this->tempDir);
+    $output = $process->getOutput();
     $result = json_decode($output, true);
 
     // Debug output if null
@@ -274,7 +276,8 @@ it('prioritizes local auth.json over global auth.json', function () {
     runCommand('git commit -m "Update private package"', $this->tempDir);
 
     // Test that analyzer uses local auth (we can't easily test the exact URL construction in integration test)
-    $output = runWhatsDiff(['--format=json'], $this->tempDir);
+    $process = runWhatsDiff(['--format=json'], $this->tempDir);
+    $output = $process->getOutput();
     $result = json_decode($output, true);
 
     // Debug output if null
