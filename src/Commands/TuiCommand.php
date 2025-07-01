@@ -66,8 +66,11 @@ class TuiCommand extends Command
             $npmAnalyzer = new NpmAnalyzer($packageInfoFetcher);
             $diffCalculator = new DiffCalculator($git, $composerAnalyzer, $npmAnalyzer);
 
-            // Calculate diffs
-            $result = $diffCalculator->calculateDiffs($ignoreLast);
+            if ($ignoreLast) {
+                $diffCalculator->ignoreLastCommit();
+            }
+
+            $result = $diffCalculator->run();
 
             if (!$result->hasAnyChanges()) {
                 $output->writeln('<info>No dependency changes detected.</info>');

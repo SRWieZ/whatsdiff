@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Whatsdiff;
 
 use Symfony\Component\Console\Application as BaseApplication;
+use Whatsdiff\Commands\BetweenCommand;
 use Whatsdiff\Commands\CheckCommand;
 use Whatsdiff\Commands\ConfigCommand;
 use Whatsdiff\Commands\DiffCommand;
@@ -26,6 +27,7 @@ class Application extends BaseApplication
         parent::__construct('whatsdiff', self::getVersionString());
 
         $this->add(new DiffCommand());
+        $this->add(new BetweenCommand());
         $this->add(new TuiCommand());
         $this->add(new CheckCommand());
         $this->add(new ConfigCommand());
