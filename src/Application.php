@@ -23,14 +23,7 @@ class Application extends BaseApplication
             error_reporting(0);
         }
 
-        $version = self::VERSION;
-        if (!str_starts_with($version, '@git_tag')) {
-            $versionString = $version;
-        } else {
-            $versionString = 'dev';
-        }
-
-        parent::__construct('whatsdiff', $versionString);
+        parent::__construct('whatsdiff', self::getVersionString());
 
         $this->add(new DiffCommand());
         $this->add(new TuiCommand());
@@ -43,14 +36,26 @@ class Application extends BaseApplication
     {
         $version = parent::getLongVersion();
 
-        $version .= PHP_EOL . PHP_EOL;
-        $version .= 'PHP version: ' . phpversion() . PHP_EOL;
-        $version .= 'Built with https://github.com/box-project/box' . PHP_EOL;
+        $version .= PHP_EOL.PHP_EOL;
+        $version .= 'PHP version: '.phpversion().PHP_EOL;
+
+        if (self::getVersion() !== 'dev') {
+            $version .= 'Built with https://github.com/box-project/box'.PHP_EOL;
+        }
 
         if (php_sapi_name() === 'micro') {
-            $version .= 'Compiled with https://github.com/crazywhalecc/static-php-cli' . PHP_EOL;
+            $version .= 'Compiled with https://github.com/crazywhalecc/static-php-cli'.PHP_EOL;
         }
 
         return $version;
+    }
+
+    public static function getVersionString(): string
+    {
+        if (! str_starts_with(self::VERSION, '@git_tag')) {
+            return self::VERSION;
+        }
+
+        return 'dev';
     }
 }

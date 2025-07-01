@@ -4,14 +4,33 @@ declare(strict_types=1);
 
 namespace Whatsdiff\Services;
 
+use GuzzleHttp\Client;
+use GuzzleHttp\Exception\GuzzleException;
+use GuzzleHttp\Exception\RequestException;
+use Psr\Http\Message\ResponseInterface;
+use RuntimeException;
+use Whatsdiff\Application;
+
 class HttpService
 {
     private CacheService $cache;
+    private Client $client;
     private array $lastResponseHeaders = [];
 
     public function __construct(CacheService $cache)
     {
         $this->cache = $cache;
+        $this->client = new Client([
+            'timeout' => 30,
+            'connect_timeout' => 10,
+            'allow_redirects' => [
+                'max' => 5,
+                'strict' => false,
+                'referer' => false,
+                'protocols' => ['http', 'https'],
+            ],
+            'http_errors' => false, // We'll handle errors ourselves
+        ]);
     }
 
     public function get(string $url, array $options = []): string
@@ -43,58 +62,51 @@ class HttpService
 
     private function fetchUrl(string $url, array $options = []): string
     {
-        $ch = curl_init();
-
-        // Set basic options
-        curl_setopt($ch, CURLOPT_URL, $url);
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-        curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
-        curl_setopt($ch, CURLOPT_MAXREDIRS, 5);
-        curl_setopt($ch, CURLOPT_TIMEOUT, 30);
-        curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 10);
-        curl_setopt($ch, CURLOPT_HEADER, true);
+        // Build Guzzle request options
+        $guzzleOptions = [];
 
         // Set User-Agent
-        $userAgent = $options['user_agent'] ?? 'whatsdiff/' . $this->getVersion();
-        curl_setopt($ch, CURLOPT_USERAGENT, $userAgent);
+        $userAgent = $options['user_agent'] ?? 'whatsdiff/' . Application::getVersionString();
+        $guzzleOptions['headers']['User-Agent'] = $userAgent;
 
         // Handle HTTP authentication if provided
         if (isset($options['auth'])) {
-            curl_setopt($ch, CURLOPT_USERPWD, $options['auth']['username'] . ':' . $options['auth']['password']);
+            $guzzleOptions['auth'] = [
+                $options['auth']['username'],
+                $options['auth']['password'],
+            ];
         }
 
         // Handle custom headers
         if (isset($options['headers']) && is_array($options['headers'])) {
-            $headers = [];
             foreach ($options['headers'] as $key => $value) {
-                $headers[] = $key . ': ' . $value;
+                $guzzleOptions['headers'][$key] = $value;
             }
-            curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
         }
 
-        // Execute request
-        $response = curl_exec($ch);
-
-        if ($response === false) {
-            $error = curl_error($ch);
-            curl_close($ch);
-            throw new \RuntimeException('Failed to fetch URL: ' . $error);
+        try {
+            $response = $this->client->get($url, $guzzleOptions);
+        } catch (RequestException $e) {
+            if ($e->hasResponse()) {
+                $response = $e->getResponse();
+                $statusCode = $response->getStatusCode();
+                throw new RuntimeException("HTTP request failed with status code: {$statusCode}");
+            }
+            throw new RuntimeException('Failed to fetch URL: ' . $e->getMessage());
+        } catch (GuzzleException $e) {
+            throw new RuntimeException('Failed to fetch URL: ' . $e->getMessage());
         }
 
-        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-        $headerSize = curl_getinfo($ch, CURLINFO_HEADER_SIZE);
-        curl_close($ch);
-
-        if ($httpCode >= 400) {
-            throw new \RuntimeException("HTTP request failed with status code: {$httpCode}");
+        $statusCode = $response->getStatusCode();
+        if ($statusCode >= 400) {
+            throw new RuntimeException("HTTP request failed with status code: {$statusCode}");
         }
 
-        // Separate headers and body
-        $headerString = substr($response, 0, $headerSize);
-        $body = substr($response, $headerSize);
+        // Get response body
+        $body = (string) $response->getBody();
 
-        // Parse headers
-        $this->lastResponseHeaders = $this->parseHeaders($headerString);
+        // Extract and parse headers
+        $this->lastResponseHeaders = $this->parseGuzzleHeaders($response);
 
         // Update cache duration based on headers
         $cacheDuration = $this->cache->getCacheDuration($this->lastResponseHeaders);
@@ -106,41 +118,20 @@ class HttpService
         return $body;
     }
 
-    private function parseHeaders(string $headerString): array
+    private function parseGuzzleHeaders(ResponseInterface $response): array
     {
         $headers = [];
-        $lines = explode("\r\n", $headerString);
 
-        foreach ($lines as $line) {
-            if (strpos($line, ':') !== false) {
-                list($key, $value) = explode(':', $line, 2);
-                $key = strtolower(trim($key));
-                $value = trim($value);
-
-                if (isset($headers[$key])) {
-                    if (!is_array($headers[$key])) {
-                        $headers[$key] = [$headers[$key]];
-                    }
-                    $headers[$key][] = $value;
-                } else {
-                    $headers[$key] = $value;
-                }
+        foreach ($response->getHeaders() as $name => $values) {
+            $name = strtolower($name);
+            if (count($values) === 1) {
+                $headers[$name] = $values[0];
+            } else {
+                $headers[$name] = $values;
             }
         }
 
         return $headers;
     }
 
-    private function getVersion(): string
-    {
-        // Try to get version from Application class constant
-        if (defined('\\Whatsdiff\\Application::VERSION')) {
-            $version = constant('\\Whatsdiff\\Application::VERSION');
-            if (!str_starts_with($version, '@git_tag')) {
-                return $version;
-            }
-        }
-
-        return 'dev';
-    }
 }
