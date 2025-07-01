@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Whatsdiff\Commands;
 
-use Laravel\Prompts\Prompt;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputInterface;
@@ -22,6 +21,8 @@ use Whatsdiff\Services\DiffCalculator;
 use Whatsdiff\Services\GitRepository;
 use Whatsdiff\Services\HttpService;
 use Whatsdiff\Services\PackageInfoFetcher;
+
+use function Laravel\Prompts\clear;
 use function Laravel\Prompts\progress;
 
 #[AsCommand(
@@ -31,6 +32,7 @@ use function Laravel\Prompts\progress;
 )]
 class DiffCommand extends Command
 {
+
     protected function configure(): void
     {
         $this
@@ -116,19 +118,13 @@ class DiffCommand extends Command
                 $calculator = $calculator->toCommit($toCommit);
             }
 
-            if ($format == 'text' && $noAnsi === false) {
+            if ($this->shouldShowProgress($format, $noAnsi, $input)) {
                 [$total, $generator] = $calculator->run(withProgress: true);
 
                 // Use Laravel Prompts for progress bar
-                $progress = progress(label: 'Fetching releases..', steps: $total);
-
-                $progress->start();
-
-                foreach ($generator as $package) {
-                    $progress->advance();
+                if ($total) {
+                    $this->showProgressBar($total, $generator);
                 }
-
-                $progress->finish();
 
                 $result = $calculator->getResult();
 
@@ -158,5 +154,31 @@ class DiffCommand extends Command
             'markdown' => new MarkdownOutput(),
             default => new TextOutput(! $noAnsi),
         };
+    }
+
+    private function shouldShowProgress($format, bool $noAnsi, InputInterface $input): bool
+    {
+        return $format == 'text' && $noAnsi === false
+            && $input->isInteractive()
+            && ! $input->hasParameterOption('--no-progress');
+    }
+
+    /**
+     * @param  mixed  $total
+     * @param  mixed  $generator
+     * @return void
+     */
+    public function showProgressBar(mixed $total, mixed $generator): void
+    {
+        $progress = progress(label: 'Analysing changes..', steps: $total);
+
+        $progress->start();
+
+        foreach ($generator as $package) {
+            $progress->advance();
+        }
+
+        $progress->finish();
+        clear();
     }
 }

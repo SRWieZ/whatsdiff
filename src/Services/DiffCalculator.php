@@ -94,7 +94,7 @@ class DiffCalculator
      * Run the diff calculation
      *
      * @param  bool  $withProgress  If true, returns [totalCount, generator], otherwise returns DiffResult
-     * @return DiffResult|array{int, \Generator<DependencyDiff>}
+     * @return DiffResult|array{int, \Generator<PackageChange>}
      */
     public function run(bool $withProgress = false)
     {
@@ -104,7 +104,7 @@ class DiffCalculator
 
         [$totalCount, $generator] = $this->runWithProgress();
 
-        foreach ($generator as $dependencyDiff) {
+        foreach ($generator as $packageChange) {
             // Just iterate through the generator to trigger the diff calculation
         }
 
@@ -122,27 +122,47 @@ class DiffCalculator
     /**
      * Run with progress reporting using generator
      *
-     * @return array{int, \Generator<DependencyDiff>}
+     * @return array{int, \Generator<PackageChange>}
      */
     private function runWithProgress(): array
     {
         $generator = $this->processDiffsWithProgress();
-        $totalCount = $this->calculateTotalDiffsCount();
+        $totalCount = $this->calculatePackageChangesCount();
 
         return [$totalCount, $generator];
     }
 
     /**
-     * Calculate total number of diffs that will be processed
+     * Calculate exact total number of package changes that will be processed
+     * Does a fast pass with skipReleaseCount to avoid HTTP requests
      */
-    private function calculateTotalDiffsCount(): int
+    private function calculatePackageChangesCount(): int
     {
+        $totalCount = 0;
+
         // Handle custom commits case
         if ($this->fromCommit !== null || $this->toCommit !== null) {
-            return count(PackageManagerType::cases());
+            $fromHash = $this->fromCommit ? $this->git->resolveCommitHash($this->fromCommit) : null;
+            $toHash = $this->toCommit ? $this->git->resolveCommitHash($this->toCommit) : $this->git->resolveCommitHash('HEAD');
+
+            foreach (PackageManagerType::cases() as $type) {
+                $filename = $type->getLockFileName();
+                $toContent = $toHash ? $this->git->getFileContentAtCommit(
+                    $filename,
+                    $toHash
+                ) : file_get_contents(basename($filename));
+                $fromContent = $fromHash ? $this->git->getFileContentAtCommit($filename, $fromHash) : null;
+
+                if (! empty($toContent)) {
+                    $packageDiffs = $this->calculatePackageDiff($type, $toContent, $fromContent);
+                    $totalCount += count($packageDiffs);
+                }
+            }
+
+            return $totalCount;
         }
 
-        // Handle normal flow - need to initialize to count relevant files
+        // Handle normal flow
         $this->initializeDependencyFiles($this->ignoreLast);
 
         $recentlyUpdated = $this->dependencyFiles->contains(fn (DependencyFile $file) => $file->hasBeenRecentlyUpdated);
@@ -156,13 +176,53 @@ class DiffCalculator
             ? $this->dependencyFiles->filter(fn (DependencyFile $file) => $file->hasBeenRecentlyUpdated)
             : $this->dependencyFiles->filter(fn (DependencyFile $file) => $file->hasCommitLogs);
 
-        return $relevantFiles->count();
+        $filenames = $relevantFiles->pluck('file')->toArray();
+        $commitLogs = $this->git->getMultipleFilesCommitLogs($filenames);
+
+        foreach ($relevantFiles as $dependencyFile) {
+            $dependencyFileFromCollection = $this->dependencyFiles->first(fn (
+                DependencyFile $file
+            ) => $file->type === $dependencyFile->type);
+            $commitLogsToCompare = $dependencyFileFromCollection->commitLogs;
+
+            [$lastHash, $previousHash] = $this->getCommitHashToCompare($commitLogsToCompare, $recentlyUpdated);
+
+            $existInPreviousHash = collect($commitLogsToCompare)->contains($previousHash);
+            $previousHashOrNot = $existInPreviousHash ? $previousHash : null;
+
+            // Skip if file hasn't changed
+            if ($previousHashOrNot === null) {
+                $commitPriorToLast = $previousHash
+                    ? $this->git->getFileCommitLogs($dependencyFile->file, $previousHash)
+                    : [];
+                $isNew = count($commitPriorToLast) === 0;
+
+                if (! $isNew) {
+                    continue;
+                }
+            }
+
+            // Get file contents and calculate diff
+            $toContent = $lastHash
+                ? $this->git->getFileContentAtCommit($dependencyFile->file, $lastHash)
+                : file_get_contents(basename($dependencyFile->file));
+            $fromContent = $previousHashOrNot
+                ? $this->git->getFileContentAtCommit($dependencyFile->file, $previousHashOrNot)
+                : null;
+
+            if (! empty($toContent)) {
+                $packageDiffs = $this->calculatePackageDiff($dependencyFile->type, $toContent, $fromContent);
+                $totalCount += count($packageDiffs);
+            }
+        }
+
+        return $totalCount;
     }
 
     /**
      * Process diffs with progress reporting
      *
-     * @return \Generator<DependencyDiff>
+     * @return \Generator<PackageChange>
      */
     private function processDiffsWithProgress(): \Generator
     {
@@ -175,7 +235,7 @@ class DiffCalculator
 
             foreach (PackageManagerType::cases() as $type) {
                 $filename = $type->getLockFileName();
-                $diff = $this->calculateDiffBetweenCommits(
+                $generator = $this->calculateDiffBetweenCommitsWithProgress(
                     $type,
                     $filename,
                     $fromHash,
@@ -183,9 +243,16 @@ class DiffCalculator
                     $this->skipReleaseCount
                 );
 
-                if ($diff !== null) {
+                $changes = collect();
+                foreach ($generator as $packageChange) {
+                    $changes->push($packageChange);
+                    yield $packageChange;
+                }
+
+                // Get the return value (DependencyDiff) from the generator
+                $diff = $generator->getReturn();
+                if ($diff instanceof DependencyDiff) {
                     $diffs->push($diff);
-                    yield $diff;
                 }
             }
 
@@ -215,30 +282,68 @@ class DiffCalculator
         $commitLogs = $this->git->getMultipleFilesCommitLogs($filenames);
 
         foreach ($relevantFiles as $dependencyFile) {
-            $diff = $this->processDependencyFile(
+            $dependencyFileFromCollection = $this->dependencyFiles->first(fn (
+                DependencyFile $file
+            ) => $file->type === $dependencyFile->type);
+            $commitLogsToCompare = $dependencyFileFromCollection->commitLogs;
+
+            [$lastHash, $previousHash] = $this->getCommitHashToCompare($commitLogsToCompare, $recentlyUpdated);
+
+            $existInPreviousHash = collect($commitLogsToCompare)->contains($previousHash);
+            $previousHashOrNot = $existInPreviousHash ? $previousHash : null;
+
+            $isNew = false;
+            if ($previousHashOrNot === null) {
+                $commitPriorToLast = $previousHash
+                    ? $this->git->getFileCommitLogs($dependencyFile->file, $previousHash)
+                    : [];
+                $isNew = count($commitPriorToLast) === 0;
+
+                if (! $isNew) {
+                    continue;
+                }
+            }
+
+            $generator = $this->calculateDiffBetweenCommitsWithProgress(
                 $dependencyFile->type,
                 $dependencyFile->file,
-                $recentlyUpdated,
-                $commitLogs,
-                $this->skipReleaseCount
+                $previousHashOrNot,
+                $lastHash,
+                $this->skipReleaseCount,
+                $isNew
             );
-            if ($diff !== null) {
+
+            $changes = collect();
+            foreach ($generator as $packageChange) {
+                $changes->push($packageChange);
+                yield $packageChange;
+            }
+
+            // Get the return value (DependencyDiff) from the generator
+            $diff = $generator->getReturn();
+            if ($diff instanceof DependencyDiff) {
                 $diffs->push($diff);
-                yield $diff;
             }
         }
 
         $this->diffResult = new DiffResult($diffs, $recentlyUpdated);
     }
 
-    private function calculateDiffBetweenCommits(
+
+    /**
+     * Calculate diff between commits with progress reporting
+     * Yields individual PackageChange objects as they're processed
+     *
+     * @return \Generator<PackageChange>
+     */
+    private function calculateDiffBetweenCommitsWithProgress(
         PackageManagerType $type,
         string $filename,
         ?string $fromHash,
         ?string $toHash,
         bool $skipReleaseCount = false,
         bool $isNew = false
-    ): ?DependencyDiff {
+    ): \Generator {
         // Get file content for both commits
         $toContent = $toHash ? $this->git->getFileContentAtCommit(
             $filename,
@@ -247,22 +352,34 @@ class DiffCalculator
         $fromContent = $fromHash ? $this->git->getFileContentAtCommit($filename, $fromHash) : null;
 
         if (empty($toContent)) {
-            return null;
+            return;
         }
 
         // Calculate the diff
         $packageDiffs = $this->calculatePackageDiff($type, $toContent, $fromContent);
-        $changes = $this->convertToPackageChanges($packageDiffs, $type, $skipReleaseCount);
 
-        if ($changes->isEmpty()) {
-            return null;
+        if (empty($packageDiffs)) {
+            return;
         }
 
         // Use short hashes for display
         $fromHashShort = $fromHash ? $this->git->getShortCommitHash($fromHash) : null;
         $toHashShort = $toHash ? $this->git->getShortCommitHash($toHash) : null;
 
-        return new DependencyDiff(
+        // Collect changes while yielding
+        $changes = collect();
+
+        foreach ($this->convertToPackageChangesWithProgress(
+            $packageDiffs,
+            $type,
+            $skipReleaseCount
+        ) as $packageChange) {
+            $changes->push($packageChange);
+            yield $packageChange;
+        }
+
+        // Store the complete DependencyDiff after all packages are processed
+        $dependencyDiff = new DependencyDiff(
             filename: $filename,
             type: $type,
             fromCommit: $fromHashShort,
@@ -270,6 +387,9 @@ class DiffCalculator
             changes: $changes,
             isNew: $isNew
         );
+
+        // Return the DependencyDiff for collection
+        return $dependencyDiff;
     }
 
 
@@ -300,43 +420,6 @@ class DiffCalculator
         });
     }
 
-    private function processDependencyFile(
-        PackageManagerType $type,
-        string $filename,
-        bool $recentlyUpdated,
-        array $commitLogs,
-        bool $skipReleaseCount = false
-    ): ?DependencyDiff {
-        $dependencyFile = $this->dependencyFiles->first(fn (DependencyFile $file) => $file->type === $type);
-        $commitLogsToCompare = $dependencyFile->commitLogs;
-
-        [$lastHash, $previousHash] = $this->getCommitHashToCompare($commitLogsToCompare, $recentlyUpdated);
-
-        $existInPreviousHash = collect($commitLogsToCompare)->contains($previousHash);
-        $previousHashOrNot = $existInPreviousHash ? $previousHash : null;
-
-        $isNew = false;
-        if ($previousHashOrNot === null) {
-            $commitPriorToLast = $previousHash
-                ? $this->git->getFileCommitLogs($filename, $previousHash)
-                : [];
-            $isNew = count($commitPriorToLast) === 0;
-
-            if (! $isNew) {
-                // File has been untouched
-                return null;
-            }
-        }
-
-        return $this->calculateDiffBetweenCommits(
-            $type,
-            $filename,
-            $previousHashOrNot,
-            $lastHash,
-            $skipReleaseCount,
-            $isNew
-        );
-    }
 
     private function getCommitHashToCompare(array $commitLogs, bool $recentlyUpdated): array
     {
@@ -400,6 +483,54 @@ class DiffCalculator
         }
 
         return $changes;
+    }
+
+    /**
+     * Convert package diffs to PackageChange objects with progress reporting
+     * Yields individual PackageChange objects as they're created, including during HTTP requests
+     *
+     * @return \Generator<PackageChange>
+     */
+    private function convertToPackageChangesWithProgress(
+        array $diff,
+        PackageManagerType $type,
+        bool $skipReleaseCount = false
+    ): \Generator {
+        foreach ($diff as $package => $infos) {
+            if ($infos['from'] !== null && $infos['to'] !== null) {
+                if (Comparator::greaterThan($infos['to'], $infos['from'])) {
+                    $releasesCount = $skipReleaseCount ? null : $this->getReleasesCount($type, $package, $infos);
+                    yield PackageChange::updated(
+                        name: $package,
+                        type: $type,
+                        fromVersion: $infos['from'],
+                        toVersion: $infos['to'],
+                        releaseCount: $releasesCount,
+                    );
+                } else {
+                    $releasesCount = $skipReleaseCount ? null : $this->getReleasesCount($type, $package, $infos);
+                    yield PackageChange::downgraded(
+                        name: $package,
+                        type: $type,
+                        fromVersion: $infos['from'],
+                        toVersion: $infos['to'],
+                        releaseCount: $releasesCount,
+                    );
+                }
+            } elseif ($infos['from'] === null && $infos['to'] !== null) {
+                yield PackageChange::added(
+                    name: $package,
+                    type: $type,
+                    version: $infos['to'],
+                );
+            } elseif ($infos['from'] !== null && $infos['to'] === null) {
+                yield PackageChange::removed(
+                    name: $package,
+                    type: $type,
+                    version: $infos['from'],
+                );
+            }
+        }
     }
 
     private function getReleasesCount(PackageManagerType $type, string $package, array $infos): int

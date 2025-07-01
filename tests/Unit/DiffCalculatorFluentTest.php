@@ -146,8 +146,8 @@ it('supports progressive processing with generator', function () {
 
     // Process the generator - it might be empty, so we just test the interface
     $processedCount = 0;
-    foreach ($generator as $dependencyDiff) {
-        expect($dependencyDiff)->toBeInstanceOf(\Whatsdiff\Data\DependencyDiff::class);
+    foreach ($generator as $packageChange) {
+        expect($packageChange)->toBeInstanceOf(\Whatsdiff\Data\PackageChange::class);
         $processedCount++;
     }
 
