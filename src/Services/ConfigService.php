@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Whatsdiff\Services;
 
+use Illuminate\Support\Arr;
 use Symfony\Component\Filesystem\Filesystem;
 use Symfony\Component\Yaml\Yaml;
 
@@ -29,14 +30,10 @@ class ConfigService
 
     public function get(string $key, mixed $default = null): mixed
     {
-        $keys = explode('.', $key);
-        $value = $this->config;
+        $value = Arr::get($this->config, $key);
 
-        foreach ($keys as $k) {
-            if (!is_array($value) || !array_key_exists($k, $value)) {
-                return $default ?? $this->getDefault($key);
-            }
-            $value = $value[$k];
+        if ($value === null) {
+            return $default ?? Arr::get($this->defaults, $key);
         }
 
         return $value;
@@ -44,19 +41,7 @@ class ConfigService
 
     public function set(string $key, mixed $value): void
     {
-        $keys = explode('.', $key);
-        $config = &$this->config;
-
-        foreach ($keys as $i => $k) {
-            if ($i === count($keys) - 1) {
-                $config[$k] = $value;
-            } else {
-                if (!isset($config[$k]) || !is_array($config[$k])) {
-                    $config[$k] = [];
-                }
-                $config = &$config[$k];
-            }
-        }
+        Arr::set($this->config, $key, $value);
 
         $this->saveConfig();
     }
@@ -113,18 +98,4 @@ class ConfigService
         }
     }
 
-    private function getDefault(string $key): mixed
-    {
-        $keys = explode('.', $key);
-        $value = $this->defaults;
-
-        foreach ($keys as $k) {
-            if (!is_array($value) || !array_key_exists($k, $value)) {
-                return null;
-            }
-            $value = $value[$k];
-        }
-
-        return $value;
-    }
 }
