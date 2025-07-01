@@ -32,7 +32,6 @@ use function Laravel\Prompts\progress;
 )]
 class DiffCommand extends Command
 {
-
     protected function configure(): void
     {
         $this
@@ -67,6 +66,12 @@ class DiffCommand extends Command
                 null,
                 InputOption::VALUE_REQUIRED,
                 'Commit hash, branch, or tag to compare to (newer version, defaults to HEAD)'
+            )
+            ->addOption(
+                'no-progress',
+                null,
+                InputOption::VALUE_NONE,
+                'Disable progress bar output'
             );
     }
 
@@ -123,6 +128,7 @@ class DiffCommand extends Command
 
                 // Use Laravel Prompts for progress bar
                 if ($total) {
+                    $output->writeln('');
                     $this->showProgressBar($total, $generator);
                 }
 
@@ -158,6 +164,9 @@ class DiffCommand extends Command
 
     private function shouldShowProgress($format, bool $noAnsi, InputInterface $input): bool
     {
+        // // TODO: We'll put a config for that later
+        // return false;
+
         return $format == 'text' && $noAnsi === false
             && $input->isInteractive()
             && ! $input->hasParameterOption('--no-progress');
@@ -179,6 +188,6 @@ class DiffCommand extends Command
         }
 
         $progress->finish();
-        clear();
+        // clear();
     }
 }
