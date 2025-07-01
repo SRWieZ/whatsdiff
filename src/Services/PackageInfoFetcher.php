@@ -9,12 +9,22 @@ use Whatsdiff\Analyzers\PackageManagerType;
 
 class PackageInfoFetcher
 {
+    private HttpService $httpService;
+
+    public function __construct(HttpService $httpService)
+    {
+        $this->httpService = $httpService;
+    }
     public function getComposerReleases(string $package, string $from, string $to, string $url): array
     {
-        $packageInfos = file_get_contents($url);
+        try {
+            // Extract authentication from URL if present
+            $options = $this->extractAuthFromUrl($url);
+            $cleanUrl = $options['url'];
 
-        if ($packageInfos === false) {
-            throw new \RuntimeException("Failed to fetch package information for {$package}");
+            $packageInfos = $this->httpService->get($cleanUrl, $options['options']);
+        } catch (\Exception $e) {
+            throw new \RuntimeException("Failed to fetch package information for {$package}: " . $e->getMessage());
         }
 
         $packageData = json_decode($packageInfos, true);
@@ -40,10 +50,11 @@ class PackageInfoFetcher
     public function getNpmReleases(string $package, string $from, string $to): array
     {
         $url = PackageManagerType::NPM->getRegistryUrl($package);
-        $packageInfos = file_get_contents($url);
 
-        if ($packageInfos === false) {
-            throw new \RuntimeException("Failed to fetch package information for {$package}");
+        try {
+            $packageInfos = $this->httpService->get($url);
+        } catch (\Exception $e) {
+            throw new \RuntimeException("Failed to fetch package information for {$package}: " . $e->getMessage());
         }
 
         $packageData = json_decode($packageInfos, true);
@@ -64,5 +75,36 @@ class PackageInfoFetcher
         }
 
         return $returnVersions;
+    }
+
+    private function extractAuthFromUrl(string $url): array
+    {
+        $parsedUrl = parse_url($url);
+        $options = [];
+
+        if (isset($parsedUrl['user']) && isset($parsedUrl['pass'])) {
+            $options['auth'] = [
+                'username' => urldecode($parsedUrl['user']),
+                'password' => urldecode($parsedUrl['pass']),
+            ];
+
+            // Rebuild URL without auth
+            $cleanUrl = $parsedUrl['scheme'] . '://';
+            $cleanUrl .= $parsedUrl['host'];
+            if (isset($parsedUrl['port'])) {
+                $cleanUrl .= ':' . $parsedUrl['port'];
+            }
+            $cleanUrl .= $parsedUrl['path'] ?? '';
+            if (isset($parsedUrl['query'])) {
+                $cleanUrl .= '?' . $parsedUrl['query'];
+            }
+            if (isset($parsedUrl['fragment'])) {
+                $cleanUrl .= '#' . $parsedUrl['fragment'];
+            }
+
+            return ['url' => $cleanUrl, 'options' => $options];
+        }
+
+        return ['url' => $url, 'options' => []];
     }
 }

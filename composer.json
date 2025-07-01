@@ -22,7 +22,10 @@
     "saloonphp/saloon": "^3.10",
     "joetannenbaum/chewie": "^0.1.5",
     "ext-mbstring": "*",
-    "symfony/console": "^6.0|^7.0"
+    "symfony/console": "^6.0|^7.0",
+    "symfony/cache": "^6.0|^7.0",
+    "symfony/filesystem": "^6.0|^7.0",
+    "symfony/yaml": "^6.0|^7.0"
   },
   "require-dev": {
     "pestphp/pest": "^2.0|^3.0",
