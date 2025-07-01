@@ -12,8 +12,11 @@ use Symfony\Component\Console\Output\OutputInterface;
 use Whatsdiff\Analyzers\ComposerAnalyzer;
 use Whatsdiff\Analyzers\NpmAnalyzer;
 use Whatsdiff\Outputs\Tui\TerminalUI;
+use Whatsdiff\Services\CacheService;
+use Whatsdiff\Services\ConfigService;
 use Whatsdiff\Services\DiffCalculator;
 use Whatsdiff\Services\GitRepository;
+use Whatsdiff\Services\HttpService;
 use Whatsdiff\Services\PackageInfoFetcher;
 
 #[AsCommand(
@@ -32,17 +35,33 @@ class TuiCommand extends Command
                 null,
                 InputOption::VALUE_NONE,
                 'Ignore last uncommitted changes'
+            )
+            ->addOption(
+                'no-cache',
+                null,
+                InputOption::VALUE_NONE,
+                'Disable caching for this request'
             );
     }
 
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
         $ignoreLast = (bool) $input->getOption('ignore-last');
+        $noCache = (bool) $input->getOption('no-cache');
 
         try {
             // Initialize services
+            $configService = new ConfigService();
+            $cacheService = new CacheService($configService);
+
+            // Disable cache if requested
+            if ($noCache) {
+                $cacheService->disableCache();
+            }
+
+            $httpService = new HttpService($cacheService);
             $git = new GitRepository();
-            $packageInfoFetcher = new PackageInfoFetcher();
+            $packageInfoFetcher = new PackageInfoFetcher($httpService);
             $composerAnalyzer = new ComposerAnalyzer($packageInfoFetcher);
             $npmAnalyzer = new NpmAnalyzer($packageInfoFetcher);
             $diffCalculator = new DiffCalculator($git, $composerAnalyzer, $npmAnalyzer);

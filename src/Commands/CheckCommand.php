@@ -14,8 +14,11 @@ use Whatsdiff\Analyzers\ComposerAnalyzer;
 use Whatsdiff\Analyzers\NpmAnalyzer;
 use Whatsdiff\Data\ChangeStatus;
 use Whatsdiff\Enums\CheckType;
+use Whatsdiff\Services\CacheService;
+use Whatsdiff\Services\ConfigService;
 use Whatsdiff\Services\DiffCalculator;
 use Whatsdiff\Services\GitRepository;
+use Whatsdiff\Services\HttpService;
 use Whatsdiff\Services\PackageInfoFetcher;
 
 #[AsCommand(
@@ -82,8 +85,12 @@ class CheckCommand extends Command
 
         // Initialize services
         try {
+            $configService = new ConfigService();
+            $cacheService = new CacheService($configService);
+            $httpService = new HttpService($cacheService);
+
             $gitRepository = new GitRepository();
-            $packageInfoFetcher = new PackageInfoFetcher();
+            $packageInfoFetcher = new PackageInfoFetcher($httpService);
             $composerAnalyzer = new ComposerAnalyzer($packageInfoFetcher);
             $npmAnalyzer = new NpmAnalyzer($packageInfoFetcher);
 

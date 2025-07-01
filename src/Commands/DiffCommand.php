@@ -15,8 +15,11 @@ use Whatsdiff\Outputs\JsonOutput;
 use Whatsdiff\Outputs\MarkdownOutput;
 use Whatsdiff\Outputs\OutputFormatterInterface;
 use Whatsdiff\Outputs\TextOutput;
+use Whatsdiff\Services\CacheService;
+use Whatsdiff\Services\ConfigService;
 use Whatsdiff\Services\DiffCalculator;
 use Whatsdiff\Services\GitRepository;
+use Whatsdiff\Services\HttpService;
 use Whatsdiff\Services\PackageInfoFetcher;
 
 #[AsCommand(
@@ -43,6 +46,12 @@ class DiffCommand extends Command
                 'Output format (text, json, markdown)',
                 'text'
             )
+            ->addOption(
+                'no-cache',
+                null,
+                InputOption::VALUE_NONE,
+                'Disable caching for this request'
+            )
         ;
     }
 
@@ -50,12 +59,22 @@ class DiffCommand extends Command
     {
         $ignoreLast = (bool) $input->getOption('ignore-last');
         $format = $input->getOption('format');
+        $noCache = (bool) $input->getOption('no-cache');
         $noAnsi = !$output->isDecorated();
 
         try {
             // Initialize services
+            $configService = new ConfigService();
+            $cacheService = new CacheService($configService);
+
+            // Disable cache if requested
+            if ($noCache) {
+                $cacheService->disableCache();
+            }
+
+            $httpService = new HttpService($cacheService);
             $git = new GitRepository();
-            $packageInfoFetcher = new PackageInfoFetcher();
+            $packageInfoFetcher = new PackageInfoFetcher($httpService);
             $composerAnalyzer = new ComposerAnalyzer($packageInfoFetcher);
             $npmAnalyzer = new NpmAnalyzer($packageInfoFetcher);
             $diffCalculator = new DiffCalculator($git, $composerAnalyzer, $npmAnalyzer);
