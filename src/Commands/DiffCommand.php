@@ -32,7 +32,7 @@ class DiffCommand extends Command
     protected function configure(): void
     {
         $this
-            ->setHelp('This command analyzes changes in your project dependencies (composer.lock and package-lock.json)')
+            ->setHelp('This command analyzes changes in your project dependencies (composer.lock and package-lock.json). You can compare dependency changes between any two commits using --from and --to options.')
             ->addOption(
                 'ignore-last',
                 null,
@@ -52,7 +52,18 @@ class DiffCommand extends Command
                 InputOption::VALUE_NONE,
                 'Disable caching for this request'
             )
-        ;
+            ->addOption(
+                'from',
+                null,
+                InputOption::VALUE_REQUIRED,
+                'Commit hash, branch, or tag to compare from (older version)'
+            )
+            ->addOption(
+                'to',
+                null,
+                InputOption::VALUE_REQUIRED,
+                'Commit hash, branch, or tag to compare to (newer version, defaults to HEAD)'
+            );
     }
 
     protected function execute(InputInterface $input, OutputInterface $output): int
@@ -60,7 +71,16 @@ class DiffCommand extends Command
         $ignoreLast = (bool) $input->getOption('ignore-last');
         $format = $input->getOption('format');
         $noCache = (bool) $input->getOption('no-cache');
+        $fromCommit = $input->getOption('from');
+        $toCommit = $input->getOption('to');
         $noAnsi = !$output->isDecorated();
+
+        // Validate options
+        if (($fromCommit || $toCommit) && $ignoreLast) {
+            $output->writeln('<error>Cannot use --ignore-last with --from or --to options</error>');
+
+            return Command::FAILURE;
+        }
 
         try {
             // Initialize services
@@ -80,7 +100,11 @@ class DiffCommand extends Command
             $diffCalculator = new DiffCalculator($git, $composerAnalyzer, $npmAnalyzer);
 
             // Calculate diffs
-            $result = $diffCalculator->calculateDiffs($ignoreLast);
+            $result = $diffCalculator->calculateDiffs(
+                ignoreLast: $ignoreLast,
+                fromCommit: $fromCommit,
+                toCommit: $toCommit
+            );
 
             // Get appropriate formatter
             $formatter = $this->getFormatter($format, $noAnsi);
@@ -92,6 +116,7 @@ class DiffCommand extends Command
 
         } catch (\Exception $e) {
             $output->writeln('<error>Error: ' . $e->getMessage() . '</error>');
+
             return Command::FAILURE;
         }
     }

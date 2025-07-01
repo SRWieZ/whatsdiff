@@ -43,14 +43,38 @@ class DiffCalculator
         }
     }
 
-    public function calculateDiffs(bool $ignoreLast, bool $skipReleaseCount = false): DiffResult
+    public function calculateDiffs(bool $ignoreLast, bool $skipReleaseCount = false, ?string $fromCommit = null, ?string $toCommit = null): DiffResult
     {
+        $diffs = collect();
+
+        // Handle custom commits case
+        if ($fromCommit !== null || $toCommit !== null) {
+            $fromHash = $fromCommit ? $this->git->resolveCommitHash($fromCommit) : null;
+            $toHash = $toCommit ? $this->git->resolveCommitHash($toCommit) : $this->git->resolveCommitHash('HEAD');
+
+            foreach (PackageManagerType::cases() as $type) {
+                $filename = $type->getLockFileName();
+                $diff = $this->calculateDiffBetweenCommits(
+                    $type,
+                    $filename,
+                    $fromHash,
+                    $toHash,
+                    $skipReleaseCount
+                );
+
+                if ($diff !== null) {
+                    $diffs->push($diff);
+                }
+            }
+
+            return new DiffResult($diffs, false);
+        }
+
+        // Handle normal flow
         $this->initializeDependencyFiles($ignoreLast);
 
         $recentlyUpdated = $this->dependencyFiles->contains(fn (DependencyFile $file) => $file->hasBeenRecentlyUpdated);
         $hasCommitLogs = $this->dependencyFiles->contains(fn (DependencyFile $file) => $file->hasCommitLogs);
-
-        $diffs = collect();
 
         // Case 1: No recent changes and no commit logs
         if (!$recentlyUpdated && !$hasCommitLogs) {
@@ -79,6 +103,45 @@ class DiffCalculator
 
         return new DiffResult($diffs, $recentlyUpdated);
     }
+
+    private function calculateDiffBetweenCommits(
+        PackageManagerType $type,
+        string $filename,
+        ?string $fromHash,
+        ?string $toHash,
+        bool $skipReleaseCount = false,
+        bool $isNew = false
+    ): ?DependencyDiff {
+        // Get file content for both commits
+        $toContent = $toHash ? $this->git->getFileContentAtCommit($filename, $toHash) : file_get_contents(basename($filename));
+        $fromContent = $fromHash ? $this->git->getFileContentAtCommit($filename, $fromHash) : null;
+
+        if (empty($toContent)) {
+            return null;
+        }
+
+        // Calculate the diff
+        $packageDiffs = $this->calculatePackageDiff($type, $toContent, $fromContent);
+        $changes = $this->convertToPackageChanges($packageDiffs, $type, $skipReleaseCount);
+
+        if ($changes->isEmpty()) {
+            return null;
+        }
+
+        // Use short hashes for display
+        $fromHashShort = $fromHash ? $this->git->getShortCommitHash($fromHash) : null;
+        $toHashShort = $toHash ? $this->git->getShortCommitHash($toHash) : null;
+
+        return new DependencyDiff(
+            filename: $filename,
+            type: $type,
+            fromCommit: $fromHashShort,
+            toCommit: $toHashShort,
+            changes: $changes,
+            isNew: $isNew
+        );
+    }
+
 
     private function initializeDependencyFiles(bool $ignoreLast): void
     {
@@ -110,9 +173,7 @@ class DiffCalculator
         bool $skipReleaseCount = false
     ): ?DependencyDiff {
         $dependencyFile = $this->dependencyFiles->first(fn (DependencyFile $file) => $file->type === $type);
-        $commitLogsToCompare = $recentlyUpdated
-            ? $dependencyFile->commitLogs
-            : $commitLogs;
+        $commitLogsToCompare = $dependencyFile->commitLogs;
 
         [$lastHash, $previousHash] = $this->getCommitHashToCompare($commitLogsToCompare, $recentlyUpdated);
 
@@ -132,22 +193,13 @@ class DiffCalculator
             }
         }
 
-        [$last, $previous] = $this->getFilesToCompare($filename, $lastHash, $previousHashOrNot);
-
-        if (empty($last)) {
-            return null;
-        }
-
-        $packageDiffs = $this->calculatePackageDiff($type, $last, $previous);
-        $changes = $this->convertToPackageChanges($packageDiffs, $type, $skipReleaseCount);
-
-        return new DependencyDiff(
-            filename: $filename,
-            type: $type,
-            fromCommit: $previousHash,
-            toCommit: $lastHash,
-            changes: $changes,
-            isNew: $isNew,
+        return $this->calculateDiffBetweenCommits(
+            $type,
+            $filename,
+            $previousHashOrNot,
+            $lastHash,
+            $skipReleaseCount,
+            $isNew
         );
     }
 
@@ -160,18 +212,6 @@ class DiffCalculator
         return [$last, $previous];
     }
 
-    private function getFilesToCompare(string $filename, ?string $lastHash, ?string $previousHash): array
-    {
-        $last = $lastHash
-            ? $this->git->getFileContentAtCommit($filename, $lastHash)
-            : file_get_contents(basename($filename));
-
-        $previous = $previousHash
-            ? $this->git->getFileContentAtCommit($filename, $previousHash)
-            : null;
-
-        return [$last, $previous];
-    }
 
     private function calculatePackageDiff(PackageManagerType $type, string $last, ?string $previous): array
     {

@@ -121,4 +121,42 @@ class GitRepository
 
         return $process->isSuccessful() ? $process->getOutput() : '';
     }
+
+    public function validateCommit(string $commit): bool
+    {
+        $process = $this->processService->git(
+            ['rev-parse', '--verify', $commit],
+            $this->gitRoot
+        );
+
+        return $process->isSuccessful();
+    }
+
+    public function resolveCommitHash(string $commit): string
+    {
+        $process = $this->processService->git(
+            ['rev-parse', $commit],
+            $this->gitRoot
+        );
+
+        if (! $process->isSuccessful()) {
+            throw new \RuntimeException("Invalid commit reference: {$commit}");
+        }
+
+        return trim($process->getOutput());
+    }
+
+    public function getShortCommitHash(string $commit): string
+    {
+        $process = $this->processService->git(
+            ['rev-parse', '--short', $commit],
+            $this->gitRoot
+        );
+
+        if (! $process->isSuccessful()) {
+            throw new \RuntimeException("Invalid commit reference: {$commit}");
+        }
+
+        return trim($process->getOutput());
+    }
 }
