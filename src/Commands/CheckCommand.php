@@ -97,7 +97,9 @@ class CheckCommand extends Command
             $diffCalculator = new DiffCalculator($gitRepository, $composerAnalyzer, $npmAnalyzer);
 
             // Calculate diffs - skip release count for performance
-            $diffResult = $diffCalculator->calculateDiffs(ignoreLast: false, skipReleaseCount: true);
+            $diffResult = $diffCalculator
+                ->skipReleaseCount()
+                ->run();
 
             // Find the specific package in the results
             $packageChange = null;

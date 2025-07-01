@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Whatsdiff\Commands;
 
+use Laravel\Prompts\Prompt;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputInterface;
@@ -21,6 +22,7 @@ use Whatsdiff\Services\DiffCalculator;
 use Whatsdiff\Services\GitRepository;
 use Whatsdiff\Services\HttpService;
 use Whatsdiff\Services\PackageInfoFetcher;
+use function Laravel\Prompts\progress;
 
 #[AsCommand(
     name: 'diff',
@@ -73,7 +75,7 @@ class DiffCommand extends Command
         $noCache = (bool) $input->getOption('no-cache');
         $fromCommit = $input->getOption('from');
         $toCommit = $input->getOption('to');
-        $noAnsi = !$output->isDecorated();
+        $noAnsi = ! $output->isDecorated();
 
         // Validate options
         if (($fromCommit || $toCommit) && $ignoreLast) {
@@ -99,12 +101,40 @@ class DiffCommand extends Command
             $npmAnalyzer = new NpmAnalyzer($packageInfoFetcher);
             $diffCalculator = new DiffCalculator($git, $composerAnalyzer, $npmAnalyzer);
 
-            // Calculate diffs
-            $result = $diffCalculator->calculateDiffs(
-                ignoreLast: $ignoreLast,
-                fromCommit: $fromCommit,
-                toCommit: $toCommit
-            );
+            // Calculate diffs using fluent interface
+            $calculator = $diffCalculator;
+
+            if ($ignoreLast) {
+                $calculator = $calculator->ignoreLastCommit();
+            }
+
+            if ($fromCommit !== null) {
+                $calculator = $calculator->fromCommit($fromCommit);
+            }
+
+            if ($toCommit !== null) {
+                $calculator = $calculator->toCommit($toCommit);
+            }
+
+            if ($format == 'text' && $noAnsi === false) {
+                [$total, $generator] = $calculator->run(withProgress: true);
+
+                // Use Laravel Prompts for progress bar
+                $progress = progress(label: 'Fetching releases..', steps: $total);
+
+                $progress->start();
+
+                foreach ($generator as $package) {
+                    $progress->advance();
+                }
+
+                $progress->finish();
+
+                $result = $calculator->getResult();
+
+            } else {
+                $result = $calculator->run();
+            }
 
             // Get appropriate formatter
             $formatter = $this->getFormatter($format, $noAnsi);
@@ -115,7 +145,7 @@ class DiffCommand extends Command
             return Command::SUCCESS;
 
         } catch (\Exception $e) {
-            $output->writeln('<error>Error: ' . $e->getMessage() . '</error>');
+            $output->writeln('<error>Error: '.$e->getMessage().'</error>');
 
             return Command::FAILURE;
         }
@@ -126,7 +156,7 @@ class DiffCommand extends Command
         return match ($format) {
             'json' => new JsonOutput(),
             'markdown' => new MarkdownOutput(),
-            default => new TextOutput(!$noAnsi),
+            default => new TextOutput(! $noAnsi),
         };
     }
 }
