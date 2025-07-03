@@ -33,6 +33,46 @@ use function Laravel\Prompts\progress;
 )]
 class AnalyseCommand extends Command
 {
+    /**
+     * Get shared options that can be used by multiple commands
+     */
+    public static function getSharedOptions(): array
+    {
+        return [
+            [
+                'format',
+                'f',
+                InputOption::VALUE_REQUIRED,
+                'Output format (text, json, markdown)',
+                'text'
+            ],
+            [
+                'no-cache',
+                null,
+                InputOption::VALUE_NONE,
+                'Disable caching for this request'
+            ],
+            [
+                'include',
+                null,
+                InputOption::VALUE_REQUIRED,
+                'Include only specific package manager types (comma-separated: composer,npmjs)'
+            ],
+            [
+                'exclude',
+                null,
+                InputOption::VALUE_REQUIRED,
+                'Exclude specific package manager types (comma-separated: composer,npmjs)'
+            ],
+            [
+                'no-progress',
+                null,
+                InputOption::VALUE_NONE,
+                'Disable progress bar output'
+            ],
+        ];
+    }
+
     protected function configure(): void
     {
         $this
@@ -42,19 +82,6 @@ class AnalyseCommand extends Command
                 null,
                 InputOption::VALUE_NONE,
                 'Ignore last uncommitted changes'
-            )
-            ->addOption(
-                'format',
-                'f',
-                InputOption::VALUE_REQUIRED,
-                'Output format (text, json, markdown)',
-                'text'
-            )
-            ->addOption(
-                'no-cache',
-                null,
-                InputOption::VALUE_NONE,
-                'Disable caching for this request'
             )
             ->addOption(
                 'from',
@@ -67,25 +94,12 @@ class AnalyseCommand extends Command
                 null,
                 InputOption::VALUE_REQUIRED,
                 'Commit hash, branch, or tag to compare to (newer version, defaults to HEAD)'
-            )
-            ->addOption(
-                'no-progress',
-                null,
-                InputOption::VALUE_NONE,
-                'Disable progress bar output'
-            )
-            ->addOption(
-                'include',
-                null,
-                InputOption::VALUE_REQUIRED,
-                'Include only specific package manager types (comma-separated: composer,npmjs)'
-            )
-            ->addOption(
-                'exclude',
-                null,
-                InputOption::VALUE_REQUIRED,
-                'Exclude specific package manager types (comma-separated: composer,npmjs)'
             );
+
+        // Add shared options
+        foreach (self::getSharedOptions() as $option) {
+            $this->addOption(...$option);
+        }
     }
 
     protected function execute(InputInterface $input, OutputInterface $output): int
