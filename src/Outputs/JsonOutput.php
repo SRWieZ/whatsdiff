@@ -27,6 +27,7 @@ class JsonOutput implements OutputFormatterInterface
                     'from' => $change->from,
                     'to' => $change->to,
                     'status' => $change->status->value,
+                    'semver' => $change->semver,
                     'release_count' => $change->releaseCount,
                 ])->toArray(),
             ])->toArray(),

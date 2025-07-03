@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace Whatsdiff\Data;
 
 use Whatsdiff\Analyzers\PackageManagerType;
+use Whatsdiff\Enums\ChangeStatus;
+use Whatsdiff\Enums\Semver;
 
 final readonly class PackageChange
 {
@@ -15,6 +17,7 @@ final readonly class PackageChange
         public ?string $to,
         public ChangeStatus $status,
         public ?int $releaseCount = null,
+        public ?Semver $semver = null,
     ) {
     }
 
@@ -45,7 +48,8 @@ final readonly class PackageChange
         PackageManagerType $type,
         string $fromVersion,
         string $toVersion,
-        ?int $releaseCount = null
+        ?int $releaseCount = null,
+        ?Semver $semver = null
     ): self {
         return new self(
             name: $name,
@@ -54,6 +58,7 @@ final readonly class PackageChange
             to: $toVersion,
             status: ChangeStatus::Updated,
             releaseCount: $releaseCount,
+            semver: $semver,
         );
     }
 
@@ -62,7 +67,8 @@ final readonly class PackageChange
         PackageManagerType $type,
         string $fromVersion,
         string $toVersion,
-        ?int $releaseCount = null
+        ?int $releaseCount = null,
+        ?Semver $semver = null
     ): self {
         return new self(
             name: $name,
@@ -71,6 +77,7 @@ final readonly class PackageChange
             to: $toVersion,
             status: ChangeStatus::Downgraded,
             releaseCount: $releaseCount,
+            semver: $semver,
         );
     }
 }

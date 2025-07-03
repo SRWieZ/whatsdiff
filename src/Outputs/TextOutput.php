@@ -6,10 +6,10 @@ namespace Whatsdiff\Outputs;
 
 use Symfony\Component\Console\Output\OutputInterface;
 use Whatsdiff\Analyzers\PackageManagerType;
-use Whatsdiff\Data\ChangeStatus;
 use Whatsdiff\Data\DependencyDiff;
 use Whatsdiff\Data\DiffResult;
 use Whatsdiff\Data\PackageChange;
+use Whatsdiff\Enums\ChangeStatus;
 
 class TextOutput implements OutputFormatterInterface
 {
