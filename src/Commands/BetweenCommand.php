@@ -9,7 +9,6 @@ use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\ArrayInput;
 use Symfony\Component\Console\Input\InputArgument;
 use Symfony\Component\Console\Input\InputInterface;
-use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
 
 #[AsCommand(name: 'between')]
@@ -30,47 +29,36 @@ class BetweenCommand extends Command
                 InputArgument::OPTIONAL,
                 'The ending commit, branch, or tag to compare to (newer version, defaults to HEAD)',
                 'HEAD'
-            )
-            ->addOption(
-                'format',
-                null,
-                InputOption::VALUE_REQUIRED,
-                'Output format (text, json, markdown)',
-                'text'
-            )
-            ->addOption(
-                'no-cache',
-                null,
-                InputOption::VALUE_NONE,
-                'Disable caching for this request'
             );
+
+        // Add shared options from AnalyseCommand
+        foreach (AnalyseCommand::getSharedOptions() as $option) {
+            $this->addOption(...$option);
+        }
     }
 
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
-        $from = $input->getArgument('from');
-        $to = $input->getArgument('to');
-        $format = $input->getOption('format');
-        $noCache = $input->getOption('no-cache');
+        // Passthrough the input options to the Analyse command
+        $options = array_filter($input->getOptions(), fn ($value) => $value !== null);
+        $options = array_combine(
+            keys: array_map(fn ($key) => '--' . $key, array_keys($options)),
+            values: $options
+        );
 
-        // Prepare arguments for the diff command
-        $diffArguments = [
-            'command' => 'diff',
-            '--from' => $from,
-            '--to' => $to,
-            '--format' => $format,
-        ];
+        $runInput = new ArrayInput(
+            array_merge(
+                $options,
+                [
+                    '--from' => $input->getArgument('from'),
+                    '--to' => $input->getArgument('to'),
+                ]
+            )
+        );
 
-        if ($noCache) {
-            $diffArguments['--no-cache'] = true;
-        }
+        // Get the Analyse command and execute it
+        $analyseCommand = $this->getApplication()->find('analyse');
 
-        // Create input for the diff command
-        $diffInput = new ArrayInput($diffArguments);
-
-        // Get the diff command and execute it
-        $diffCommand = $this->getApplication()->find('diff');
-
-        return $diffCommand->run($diffInput, $output);
+        return $analyseCommand->run($runInput, $output);
     }
 }

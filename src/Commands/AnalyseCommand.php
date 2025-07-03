@@ -11,6 +11,7 @@ use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
 use Whatsdiff\Analyzers\ComposerAnalyzer;
 use Whatsdiff\Analyzers\NpmAnalyzer;
+use Whatsdiff\Analyzers\PackageManagerType;
 use Whatsdiff\Outputs\JsonOutput;
 use Whatsdiff\Outputs\MarkdownOutput;
 use Whatsdiff\Outputs\OutputFormatterInterface;
@@ -26,12 +27,52 @@ use function Laravel\Prompts\clear;
 use function Laravel\Prompts\progress;
 
 #[AsCommand(
-    name: 'diff',
+    name: 'analyse',
     description: 'See what\'s changed in your project\'s dependencies',
     hidden: false,
 )]
-class DiffCommand extends Command
+class AnalyseCommand extends Command
 {
+    /**
+     * Get shared options that can be used by multiple commands
+     */
+    public static function getSharedOptions(): array
+    {
+        return [
+            [
+                'format',
+                'f',
+                InputOption::VALUE_REQUIRED,
+                'Output format (text, json, markdown)',
+                'text'
+            ],
+            [
+                'no-cache',
+                null,
+                InputOption::VALUE_NONE,
+                'Disable caching for this request'
+            ],
+            [
+                'include',
+                null,
+                InputOption::VALUE_REQUIRED,
+                'Include only specific package manager types (comma-separated: composer,npmjs)'
+            ],
+            [
+                'exclude',
+                null,
+                InputOption::VALUE_REQUIRED,
+                'Exclude specific package manager types (comma-separated: composer,npmjs)'
+            ],
+            [
+                'no-progress',
+                null,
+                InputOption::VALUE_NONE,
+                'Disable progress bar output'
+            ],
+        ];
+    }
+
     protected function configure(): void
     {
         $this
@@ -41,19 +82,6 @@ class DiffCommand extends Command
                 null,
                 InputOption::VALUE_NONE,
                 'Ignore last uncommitted changes'
-            )
-            ->addOption(
-                'format',
-                'f',
-                InputOption::VALUE_REQUIRED,
-                'Output format (text, json, markdown)',
-                'text'
-            )
-            ->addOption(
-                'no-cache',
-                null,
-                InputOption::VALUE_NONE,
-                'Disable caching for this request'
             )
             ->addOption(
                 'from',
@@ -66,13 +94,12 @@ class DiffCommand extends Command
                 null,
                 InputOption::VALUE_REQUIRED,
                 'Commit hash, branch, or tag to compare to (newer version, defaults to HEAD)'
-            )
-            ->addOption(
-                'no-progress',
-                null,
-                InputOption::VALUE_NONE,
-                'Disable progress bar output'
             );
+
+        // Add shared options
+        foreach (self::getSharedOptions() as $option) {
+            $this->addOption(...$option);
+        }
     }
 
     protected function execute(InputInterface $input, OutputInterface $output): int
@@ -82,11 +109,19 @@ class DiffCommand extends Command
         $noCache = (bool) $input->getOption('no-cache');
         $fromCommit = $input->getOption('from');
         $toCommit = $input->getOption('to');
+        $includeTypes = $input->getOption('include');
+        $excludeTypes = $input->getOption('exclude');
         $noAnsi = ! $output->isDecorated();
 
         // Validate options
         if (($fromCommit || $toCommit) && $ignoreLast) {
             $output->writeln('<error>Cannot use --ignore-last with --from or --to options</error>');
+
+            return Command::FAILURE;
+        }
+
+        if ($includeTypes && $excludeTypes) {
+            $output->writeln('<error>Cannot use both --include and --exclude options</error>');
 
             return Command::FAILURE;
         }
@@ -108,8 +143,19 @@ class DiffCommand extends Command
             $npmAnalyzer = new NpmAnalyzer($packageInfoFetcher);
             $diffCalculator = new DiffCalculator($git, $composerAnalyzer, $npmAnalyzer);
 
+            // Parse dependency types from include/exclude options
+            $dependencyTypes = $this->parseDependencyTypes($includeTypes, $excludeTypes, $output);
+            if ($dependencyTypes === null) {
+                return Command::FAILURE;
+            }
+
             // Calculate diffs using fluent interface
             $calculator = $diffCalculator;
+
+            // Configure dependency types if specified
+            foreach ($dependencyTypes as $type) {
+                $calculator = $calculator->for($type);
+            }
 
             if ($ignoreLast) {
                 $calculator = $calculator->ignoreLastCommit();
@@ -189,5 +235,62 @@ class DiffCommand extends Command
 
         $progress->finish();
         // clear();
+    }
+
+    /**
+     * Parse dependency types from include/exclude options
+     *
+     * @return array<PackageManagerType>|null Returns null on error
+     */
+    private function parseDependencyTypes(?string $includeTypes, ?string $excludeTypes, OutputInterface $output): ?array
+    {
+        $allTypes = PackageManagerType::cases();
+
+        // If neither include nor exclude is specified, return all types
+        if (!$includeTypes && !$excludeTypes) {
+            return $allTypes;
+        }
+
+        // Handle include option
+        if ($includeTypes) {
+            $types = array_map('trim', explode(',', $includeTypes));
+            $parsedTypes = [];
+
+            foreach ($types as $typeString) {
+                $type = $this->parsePackageManagerType($typeString);
+                if ($type === null) {
+                    $output->writeln("<error>Invalid package manager type: '{$typeString}'. Valid types: composer, npmjs</error>");
+                    return null;
+                }
+                $parsedTypes[] = $type;
+            }
+
+            return $parsedTypes;
+        }
+
+        // Handle exclude option
+        $excludeTypeStrings = array_map('trim', explode(',', $excludeTypes));
+        $excludeTypesArray = [];
+
+        foreach ($excludeTypeStrings as $typeString) {
+            $type = $this->parsePackageManagerType($typeString);
+            if ($type === null) {
+                $output->writeln("<error>Invalid package manager type: '{$typeString}'. Valid types: composer, npmjs</error>");
+                return null;
+            }
+            $excludeTypesArray[] = $type;
+        }
+
+        // Return all types except the excluded ones
+        return array_filter($allTypes, fn (PackageManagerType $type) => !in_array($type, $excludeTypesArray));
+    }
+
+    private function parsePackageManagerType(string $typeString): ?PackageManagerType
+    {
+        return match (strtolower($typeString)) {
+            'composer' => PackageManagerType::COMPOSER,
+            'npmjs', 'npm' => PackageManagerType::NPM,
+            default => null,
+        };
     }
 }
