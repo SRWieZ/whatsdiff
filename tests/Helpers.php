@@ -149,7 +149,7 @@ function generateComposerLock(array $packages): string
     $lockPackages = [];
 
     foreach ($packages as $name => $version) {
-        $lockPackages[] = [
+        $package = [
             'name' => $name,
             'version' => $version,
             'source' => [
@@ -157,6 +157,16 @@ function generateComposerLock(array $packages): string
                 'url' => "https://github.com/{$name}.git",
             ],
         ];
+
+        // Add dist URL for private packages (livewire/flux-pro uses private registry)
+        if (str_starts_with($name, 'livewire/flux-pro')) {
+            $package['dist'] = [
+                'type' => 'zip',
+                'url' => "https://composer.fluxui.dev/dists/{$name}/{$version}.zip",
+            ];
+        }
+
+        $lockPackages[] = $package;
     }
 
     $composerLock = [
