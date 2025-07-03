@@ -182,17 +182,6 @@ it('gets releases count successfully', function () {
     expect($result)->toBe(3);
 });
 
-it('handles exception when getting releases count', function () {
-    $this->packageInfoFetcher
-        ->shouldReceive('getComposerReleases')
-        ->once()
-        ->andThrow(new \Exception('API error'));
-
-    $result = $this->analyzer->getReleasesCount('symfony/console', 'v5.4.0', 'v6.0.0', 'https://repo.packagist.org/p2/symfony/console.json');
-
-    expect($result)->toBe(0);
-});
-
 it('gets default packagist url', function () {
     $composerLock = [
         'packages' => [

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Whatsdiff\Analyzers;
 
+use Whatsdiff\Analyzers\Exceptions\PackageInformationsException;
 use Whatsdiff\Services\PackageInfoFetcher;
 
 class ComposerAnalyzer
@@ -66,14 +67,15 @@ class ComposerAnalyzer
             ->toArray();
     }
 
-    public function getReleasesCount(string $package, string $from, string $to, string $url): int
+    public function getReleasesCount(string $package, string $from, string $to, string $url): ?int
     {
         try {
             $releases = $this->packageInfoFetcher->getComposerReleases($package, $from, $to, $url);
-            return count($releases);
-        } catch (\Exception $e) {
-            return 0;
+        } catch (PackageInformationsException $e) {
+            return  null;
         }
+
+        return count($releases);
     }
 
     private function getPackageUrl(string $name, array $composerLock): string

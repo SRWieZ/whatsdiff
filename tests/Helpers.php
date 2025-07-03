@@ -137,3 +137,95 @@ function runWhatsDiff(array $args = [], ?string $cwd = null): SymfonyProcess
 
     return $process;
 }
+
+/**
+ * Generate a composer.lock file content from a simple package array
+ *
+ * @param array<string, string> $packages Array of packages with format ['package/name' => 'version']
+ * @return string JSON content for composer.lock
+ */
+function generateComposerLock(array $packages): string
+{
+    $lockPackages = [];
+
+    foreach ($packages as $name => $version) {
+        $package = [
+            'name' => $name,
+            'version' => $version,
+            'source' => [
+                'type' => 'git',
+                'url' => "https://github.com/{$name}.git",
+            ],
+        ];
+
+        // Add dist URL for private packages (livewire/flux-pro uses private registry)
+        if (str_starts_with($name, 'livewire/flux-pro')) {
+            $package['dist'] = [
+                'type' => 'zip',
+                'url' => "https://composer.fluxui.dev/dists/{$name}/{$version}.zip",
+            ];
+        }
+
+        $lockPackages[] = $package;
+    }
+
+    $composerLock = [
+        '_readme' => ['This file locks the dependencies of your project to a known state'],
+        'content-hash' => bin2hex(random_bytes(16)),
+        'packages' => $lockPackages,
+        'packages-dev' => [],
+        'aliases' => [],
+        'minimum-stability' => 'stable',
+        'stability-flags' => [],
+        'prefer-stable' => true,
+        'prefer-lowest' => false,
+        'platform' => [],
+        'platform-dev' => [],
+        'plugin-api-version' => '2.0.0',
+    ];
+
+    return json_encode($composerLock, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
+}
+
+/**
+ * Generate a package-lock.json file content from a simple package array
+ *
+ * @param array<string, string> $packages Array of packages with format ['package-name' => 'version']
+ * @return string JSON content for package-lock.json
+ */
+function generatePackageLock(array $packages): string
+{
+    $lockPackages = [
+        '' => [
+            'name' => 'test-project',
+            'version' => '1.0.0',
+            'license' => 'ISC',
+            'dependencies' => [],
+        ],
+    ];
+
+    $dependencies = [];
+
+    foreach ($packages as $name => $version) {
+        $lockPackages["node_modules/{$name}"] = [
+            'version' => $version,
+            'resolved' => "https://registry.npmjs.org/{$name}/-/{$name}-{$version}.tgz",
+            'integrity' => 'sha512-' . base64_encode(random_bytes(32)),
+            'license' => 'MIT',
+        ];
+
+        $dependencies[$name] = "^{$version}";
+    }
+
+    $lockPackages['']['dependencies'] = $dependencies;
+
+    $packageLock = [
+        'name' => 'test-project',
+        'version' => '1.0.0',
+        'lockfileVersion' => 3,
+        'requires' => true,
+        'packages' => $lockPackages,
+    ];
+
+    return json_encode($packageLock, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
+}
