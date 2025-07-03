@@ -21,6 +21,7 @@ class DiffCalculator
     private NpmAnalyzer $npmAnalyzer;
 
     private Collection $dependencyFiles;
+    private array $dependencyTypes;
 
     // Fluent interface state
     private ?string $fromCommit = null;
@@ -38,12 +39,16 @@ class DiffCalculator
         $this->composerAnalyzer = $composerAnalyzer;
         $this->npmAnalyzer = $npmAnalyzer;
         $this->dependencyFiles = collect();
-        $this->initializeDependencyFilesStructure();
+        $this->dependencyTypes = [];
     }
 
     private function initializeDependencyFilesStructure(): void
     {
-        foreach (PackageManagerType::cases() as $type) {
+        if ($this->dependencyFiles->isNotEmpty()) {
+            return;
+        }
+
+        foreach ($this->getActiveDependencyTypes() as $type) {
             $this->dependencyFiles->push(
                 DependencyFile::create($type, $type->getLockFileName())
             );
@@ -88,6 +93,24 @@ class DiffCalculator
         $this->skipReleaseCount = $skip;
 
         return $this;
+    }
+
+    /**
+     * Set a specific package manager type to include
+     */
+    public function for(PackageManagerType $type): self
+    {
+        $this->dependencyTypes[] = $type;
+
+        return $this;
+    }
+
+    /**
+     * Get the active dependency types (filtered or all if none specified)
+     */
+    private function getActiveDependencyTypes(): array
+    {
+        return empty($this->dependencyTypes) ? PackageManagerType::cases() : $this->dependencyTypes;
     }
 
     /**
@@ -169,6 +192,7 @@ class DiffCalculator
         if ($this->fromCommit !== null || $this->toCommit !== null) {
             yield from $this->processCustomCommitsWithProgress($diffs);
             $this->diffResult = new DiffResult($diffs, false);
+
             return;
         }
 
@@ -180,6 +204,7 @@ class DiffCalculator
         // Case 1: No recent changes and no commit logs
         if ($relevantFiles->isEmpty()) {
             $this->diffResult = new DiffResult($diffs, false);
+
             return;
         }
 
@@ -252,6 +277,9 @@ class DiffCalculator
 
     private function initializeDependencyFiles(bool $ignoreLast): void
     {
+        // Initialize dependency files structure if not already done
+        $this->initializeDependencyFilesStructure();
+
         $relativeCurrentDir = $this->git->getRelativeCurrentDir();
 
         // Adjust file paths relative to current directory and git root
@@ -352,6 +380,7 @@ class DiffCalculator
         }
 
         $basename = basename($filename);
+
         return file_exists($basename) ? file_get_contents($basename) : null;
     }
 
@@ -360,10 +389,12 @@ class DiffCalculator
      */
     private function getRelevantFiles(): Collection
     {
+        $this->initializeDependencyFilesStructure();
+
         $recentlyUpdated = $this->dependencyFiles->contains(fn (DependencyFile $file) => $file->hasBeenRecentlyUpdated);
         $hasCommitLogs = $this->dependencyFiles->contains(fn (DependencyFile $file) => $file->hasCommitLogs);
 
-        if (!$recentlyUpdated && !$hasCommitLogs) {
+        if (! $recentlyUpdated && ! $hasCommitLogs) {
             return collect();
         }
 
@@ -382,6 +413,7 @@ class DiffCalculator
         }
 
         $commitPriorToLast = $this->git->getFileCommitLogs($filename, $previousHash);
+
         return count($commitPriorToLast) === 0;
     }
 
@@ -446,7 +478,7 @@ class DiffCalculator
         $totalCount = 0;
         [$fromHash, $toHash] = $this->resolveCommitHashes();
 
-        foreach (PackageManagerType::cases() as $type) {
+        foreach ($this->getActiveDependencyTypes() as $type) {
             $filename = $type->getLockFileName();
             $toContent = $this->getFileContents($filename, $toHash);
             $fromContent = $this->getFileContents($filename, $fromHash);
@@ -484,7 +516,7 @@ class DiffCalculator
             // Skip if file hasn't changed
             if ($previousHashOrNot === null) {
                 $isNew = $this->isFileNew($dependencyFile->file, $previousHash);
-                if (!$isNew) {
+                if (! $isNew) {
                     continue;
                 }
             }
@@ -511,7 +543,7 @@ class DiffCalculator
     {
         [$fromHash, $toHash] = $this->resolveCommitHashes();
 
-        foreach (PackageManagerType::cases() as $type) {
+        foreach ($this->getActiveDependencyTypes() as $type) {
             $filename = $type->getLockFileName();
             $generator = $this->calculateDiffBetweenCommitsWithProgress(
                 $type,
@@ -540,8 +572,11 @@ class DiffCalculator
      *
      * @return \Generator<PackageChange>
      */
-    private function processFilesWithProgress(Collection $relevantFiles, Collection $diffs, bool $recentlyUpdated): \Generator
-    {
+    private function processFilesWithProgress(
+        Collection $relevantFiles,
+        Collection $diffs,
+        bool $recentlyUpdated
+    ): \Generator {
         $filenames = $relevantFiles->pluck('file')->toArray();
         $commitLogs = $this->git->getMultipleFilesCommitLogs($filenames);
 
@@ -559,7 +594,7 @@ class DiffCalculator
             $isNew = false;
             if ($previousHashOrNot === null) {
                 $isNew = $this->isFileNew($dependencyFile->file, $previousHash);
-                if (!$isNew) {
+                if (! $isNew) {
                     continue;
                 }
             }

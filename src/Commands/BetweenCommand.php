@@ -17,6 +17,7 @@ class BetweenCommand extends Command
 {
     protected function configure(): void
     {
+        // TODO: make a static array of options in Analyse command and reuse it here
         $this
             ->setDescription('Compare dependency changes between two commits, branches, or tags')
             ->setHelp('This command provides a convenient way to compare dependency changes between two specific points in your project history. It internally uses the diff command with --from and --to options.')
@@ -43,34 +44,43 @@ class BetweenCommand extends Command
                 null,
                 InputOption::VALUE_NONE,
                 'Disable caching for this request'
+            )
+            ->addOption(
+                'include',
+                null,
+                InputOption::VALUE_REQUIRED,
+                'Include only specific package manager types (comma-separated: composer,npmjs)'
+            )
+            ->addOption(
+                'exclude',
+                null,
+                InputOption::VALUE_REQUIRED,
+                'Exclude specific package manager types (comma-separated: composer,npmjs)'
             );
     }
 
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
-        $from = $input->getArgument('from');
-        $to = $input->getArgument('to');
-        $format = $input->getOption('format');
-        $noCache = $input->getOption('no-cache');
+        // Passthrough the input options to the Analyse command
+        $options = array_filter($input->getOptions(), fn ($value) => $value !== null);
+        $options = array_combine(
+            keys: array_map(fn ($key) => '--' . $key, array_keys($options)),
+            values: $options
+        );
 
-        // Prepare arguments for the diff command
-        $diffArguments = [
-            'command' => 'diff',
-            '--from' => $from,
-            '--to' => $to,
-            '--format' => $format,
-        ];
+        $runInput = new ArrayInput(
+            array_merge(
+                $options,
+                [
+                    '--from' => $input->getArgument('from'),
+                    '--to' => $input->getArgument('to'),
+                ]
+            )
+        );
 
-        if ($noCache) {
-            $diffArguments['--no-cache'] = true;
-        }
+        // Get the Analyse command and execute it
+        $analyseCommand = $this->getApplication()->find('analyse');
 
-        // Create input for the diff command
-        $diffInput = new ArrayInput($diffArguments);
-
-        // Get the diff command and execute it
-        $diffCommand = $this->getApplication()->find('diff');
-
-        return $diffCommand->run($diffInput, $output);
+        return $analyseCommand->run($runInput, $output);
     }
 }
