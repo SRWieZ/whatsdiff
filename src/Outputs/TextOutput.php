@@ -11,24 +11,21 @@ use Whatsdiff\Data\DiffResult;
 use Whatsdiff\Data\PackageChange;
 use Whatsdiff\Enums\ChangeStatus;
 use Whatsdiff\Enums\Semver;
-use Whatsdiff\Services\VersionHighlighter;
 
 class TextOutput implements OutputFormatterInterface
 {
     private bool $useAnsi;
-    private VersionHighlighter $versionHighlighter;
 
     public function __construct(bool $useAnsi = true)
     {
         $this->useAnsi = $useAnsi;
-        $this->versionHighlighter = new VersionHighlighter();
     }
 
     public function format(DiffResult $result, OutputInterface $output): void
     {
-        if ( ! $result->hasDiffs()) {
+        if (! $result->hasDiffs()) {
             $filenameList = collect(PackageManagerType::cases())
-                ->map(fn($type) => $type->getLockFileName())
+                ->map(fn ($type) => $type->getLockFileName())
                 ->implode(', ');
             $output->writeln("No recent changes and no commit logs found for {$filenameList}");
 
@@ -60,7 +57,7 @@ class TextOutput implements OutputFormatterInterface
         }
         $output->writeln('');
 
-        if ( ! $diff->hasChanges()) {
+        if (! $diff->hasChanges()) {
             $output->writeln(' → No dependencies changes detected');
             $output->writeln('');
 
@@ -80,13 +77,13 @@ class TextOutput implements OutputFormatterInterface
         }
 
         // Calculate padding for alignment
-        $maxNameLen = $diff->changes->max(fn(PackageChange $c) => strlen($c->name)) ?: 0;
+        $maxNameLen = $diff->changes->max(fn (PackageChange $c) => strlen($c->name)) ?: 0;
         $maxFromLen = $diff->changes
-            ->filter(fn(PackageChange $c) => $c->from !== null)
-            ->max(fn(PackageChange $c) => strlen($c->from)) ?: 0;
+            ->filter(fn (PackageChange $c) => $c->from !== null)
+            ->max(fn (PackageChange $c) => strlen($c->from)) ?: 0;
         $maxToLen = $diff->changes
-            ->filter(fn(PackageChange $c) => $c->to !== null)
-            ->max(fn(PackageChange $c) => strlen($c->to)) ?: 0;
+            ->filter(fn (PackageChange $c) => $c->to !== null)
+            ->max(fn (PackageChange $c) => strlen($c->to)) ?: 0;
 
         foreach ($changes as $change) {
             $symbol = $this->getSymbol($change->status, $change->semver);
@@ -146,7 +143,7 @@ class TextOutput implements OutputFormatterInterface
 
         $symbol = mb_str_pad($symbol, 4, ' ', STR_PAD_LEFT);
 
-        if ( ! $this->useAnsi) {
+        if (! $this->useAnsi) {
             return $symbol;
         }
 

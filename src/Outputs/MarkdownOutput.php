@@ -7,6 +7,7 @@ namespace Whatsdiff\Outputs;
 use Symfony\Component\Console\Output\OutputInterface;
 use Whatsdiff\Data\DependencyDiff;
 use Whatsdiff\Data\DiffResult;
+use Whatsdiff\Enums\Semver;
 
 class MarkdownOutput implements OutputFormatterInterface
 {
@@ -52,8 +53,11 @@ class MarkdownOutput implements OutputFormatterInterface
         $added = $diff->getAddedPackages();
         if ($added->isNotEmpty()) {
             $output->writeln('### Added');
+            $output->writeln('');
+            $output->writeln('| Package | Version |');
+            $output->writeln('|---------|---------|');
             foreach ($added as $change) {
-                $output->writeln("- **{$change->name}** `{$change->to}`");
+                $output->writeln("| **{$change->name}** | `{$change->to}` |");
             }
             $output->writeln('');
         }
@@ -62,8 +66,11 @@ class MarkdownOutput implements OutputFormatterInterface
         $removed = $diff->getRemovedPackages();
         if ($removed->isNotEmpty()) {
             $output->writeln('### Removed');
+            $output->writeln('');
+            $output->writeln('| Package | Version |');
+            $output->writeln('|---------|---------|');
             foreach ($removed as $change) {
-                $output->writeln("- **{$change->name}** `{$change->from}`");
+                $output->writeln("| **{$change->name}** | `{$change->from}` |");
             }
             $output->writeln('');
         }
@@ -72,9 +79,13 @@ class MarkdownOutput implements OutputFormatterInterface
         $updated = $diff->getUpdatedPackages();
         if ($updated->isNotEmpty()) {
             $output->writeln('### Updated');
+            $output->writeln('');
+            $output->writeln('| Package | From | To | Change | Releases |');
+            $output->writeln('|---------|------|----|--------|----------|');
             foreach ($updated as $change) {
-                $releaseText = $change->releaseCount > 1 ? " ({$change->releaseCount} releases)" : '';
-                $output->writeln("- **{$change->name}** `{$change->from}` → `{$change->to}`{$releaseText}");
+                $semverBadge = $this->getSemverEmoji($change->semver);
+                $releaseText = $this->getReleaseText($change->releaseCount);
+                $output->writeln("| **{$change->name}** | `{$change->from}` | `{$change->to}` | {$semverBadge} | {$releaseText} |");
             }
             $output->writeln('');
         }
@@ -83,11 +94,51 @@ class MarkdownOutput implements OutputFormatterInterface
         $downgraded = $diff->getDowngradedPackages();
         if ($downgraded->isNotEmpty()) {
             $output->writeln('### Downgraded');
+            $output->writeln('');
+            $output->writeln('| Package | From | To | Change | Releases |');
+            $output->writeln('|---------|------|----|--------|----------|');
             foreach ($downgraded as $change) {
-                $releaseText = $change->releaseCount > 1 ? " ({$change->releaseCount} releases)" : '';
-                $output->writeln("- **{$change->name}** `{$change->from}` → `{$change->to}`{$releaseText}");
+                $semverBadge = $this->getSemverEmoji($change->semver);
+                $releaseText = $this->getReleaseText($change->releaseCount);
+                $output->writeln("| **{$change->name}** | `{$change->from}` | `{$change->to}` | {$semverBadge} | {$releaseText} |");
             }
             $output->writeln('');
         }
+    }
+
+    // private function getSemverBadge(?Semver $semver): string
+    // {
+    //     if ($semver === null) {
+    //         return '';
+    //     }
+    //
+    //     return match ($semver) {
+    //         Semver::Major => '![major](https://img.shields.io/badge/major-red)',
+    //         Semver::Minor => '![minor](https://img.shields.io/badge/minor-orange)',
+    //         Semver::Patch => '![patch](https://img.shields.io/badge/patch-green)',
+    //     };
+    // }
+
+    private function getSemverEmoji(?Semver $semver): string
+    {
+        if ($semver === null) {
+            return '';
+        }
+
+        return match ($semver) {
+            Semver::Major => '🔴 Major',
+            Semver::Minor => '🟡 Minor',
+            Semver::Patch => '🟢 Patch',
+        };
+    }
+
+    private function getReleaseText(?int $releaseCount): string
+    {
+        if ($releaseCount === null || $releaseCount === 0) {
+            return '';
+        }
+
+        // return $releaseCount === 1 ? '1 release' : "{$releaseCount} releases";
+        return (string) $releaseCount;
     }
 }
