@@ -68,12 +68,9 @@ class ComposerAnalyzer
 
     public function getReleasesCount(string $package, string $from, string $to, string $url): int
     {
-        try {
-            $releases = $this->packageInfoFetcher->getComposerReleases($package, $from, $to, $url);
-            return count($releases);
-        } catch (\Exception $e) {
-            return 0;
-        }
+        $releases = $this->packageInfoFetcher->getComposerReleases($package, $from, $to, $url);
+
+        return count($releases);
     }
 
     private function getPackageUrl(string $name, array $composerLock): string

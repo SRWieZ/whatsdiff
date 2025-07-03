@@ -39,7 +39,7 @@ class PackageInfoFetcher
         foreach ($versions as $info) {
             $version = $info['version'];
 
-            if (Comparator::greaterThan($version, $from) && Comparator::lessThan($version, $to)) {
+            if (Comparator::greaterThan($version, $from) && Comparator::lessThanOrEqualTo($version, $to)) {
                 $returnVersions[] = $version;
             }
         }
@@ -69,7 +69,7 @@ class PackageInfoFetcher
         foreach ($versions as $info) {
             $version = $info['version'];
 
-            if (Comparator::greaterThan($version, $from) && Comparator::lessThan($version, $to)) {
+            if (Comparator::greaterThan($version, $from) && Comparator::lessThanOrEqualTo($version, $to)) {
                 $returnVersions[] = $version;
             }
         }

@@ -69,11 +69,8 @@ class NpmAnalyzer
 
     public function getReleasesCount(string $package, string $from, string $to): int
     {
-        try {
-            $releases = $this->packageInfoFetcher->getNpmReleases($package, $from, $to);
-            return count($releases);
-        } catch (\Exception $e) {
-            return 0;
-        }
+        $releases = $this->packageInfoFetcher->getNpmReleases($package, $from, $to);
+
+        return count($releases);
     }
 }

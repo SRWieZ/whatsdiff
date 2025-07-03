@@ -175,16 +175,6 @@ it('gets releases count successfully', function () {
     expect($result)->toBe(6);
 });
 
-it('handles exception when getting releases count', function () {
-    $this->packageInfoFetcher
-        ->shouldReceive('getNpmReleases')
-        ->once()
-        ->andThrow(new \Exception('API error'));
-
-    $result = $this->analyzer->getReleasesCount('lodash', '4.17.15', '4.17.21');
-
-    expect($result)->toBe(0);
-});
 
 it('handles scoped packages correctly', function () {
     $packageLockContent = [
