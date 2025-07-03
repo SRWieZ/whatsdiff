@@ -348,7 +348,7 @@ class DiffCalculator
         }
     }
 
-    private function getReleasesCount(PackageManagerType $type, string $package, array $infos): int
+    private function getReleasesCount(PackageManagerType $type, string $package, array $infos): ?int
     {
         return match ($type) {
             PackageManagerType::COMPOSER => $this->composerAnalyzer->getReleasesCount(

@@ -207,13 +207,8 @@ it('supports --no-cache option', function () {
     runCommand('git commit -m "Update doctrine/dbal"');
     $secondCommit = trim(runCommand('git rev-parse HEAD'));
 
-    $processService = new ProcessService();
-
     // Test with --no-cache option
-    $process = $processService->php(
-        [realpath(__DIR__.'/../../bin/whatsdiff'), 'between', $firstCommit, $secondCommit, '--no-cache'],
-        $this->tempDir
-    );
+    $process = runWhatsDiff(['between', $firstCommit, $secondCommit, '--no-cache'], $this->tempDir);
 
     expect($process->getExitCode())->toBe(Command::SUCCESS);
     expect($process->getOutput())->toContain('doctrine/dbal');
@@ -247,13 +242,8 @@ it('works with git tags', function () {
     runCommand('git commit -m "Update phpunit/phpunit"');
     runCommand('git tag v2.0.0');
 
-    $processService = new ProcessService();
-
     // Test between command with git tags
-    $process = $processService->php(
-        [realpath(__DIR__.'/../../bin/whatsdiff'), 'between', 'v1.0.0', 'v2.0.0'],
-        $this->tempDir
-    );
+    $process = runWhatsDiff(['between', 'v1.0.0', 'v2.0.0'], $this->tempDir);
 
     expect($process->getExitCode())->toBe(Command::SUCCESS);
     expect($process->getOutput())->toContain('phpunit/phpunit');
@@ -267,13 +257,8 @@ it('handles invalid commit references', function () {
     runCommand('git add composer.lock');
     runCommand('git commit -m "Initial commit"');
 
-    $processService = new ProcessService();
-
     // Test with invalid commit reference
-    $process = $processService->php(
-        [realpath(__DIR__.'/../../bin/whatsdiff'), 'between', 'invalid-commit', 'HEAD'],
-        $this->tempDir
-    );
+    $process = runWhatsDiff(['between', 'invalid-commit', 'HEAD'], $this->tempDir);
 
     expect($process->getExitCode())->toBe(Command::FAILURE);
     expect($process->getOutput().$process->getErrorOutput())->toContain('Error:');

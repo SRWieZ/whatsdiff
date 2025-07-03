@@ -186,6 +186,10 @@ class AnalyseCommand extends Command
             return Command::SUCCESS;
 
         } catch (\Exception $e) {
+            if ($format === 'json') {
+                $output->writeln(json_encode(['error' => $e->getMessage()], JSON_PRETTY_PRINT));
+                return Command::FAILURE;
+            }
             $output->writeln('<error>Error: '.$e->getMessage().'</error>');
 
             return Command::FAILURE;

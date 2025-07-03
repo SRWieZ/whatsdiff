@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Whatsdiff\Analyzers;
 
+use Whatsdiff\Analyzers\Exceptions\PackageInformationsException;
 use Whatsdiff\Services\PackageInfoFetcher;
 
 class NpmAnalyzer
@@ -67,9 +68,13 @@ class NpmAnalyzer
             ->toArray();
     }
 
-    public function getReleasesCount(string $package, string $from, string $to): int
+    public function getReleasesCount(string $package, string $from, string $to): ?int
     {
-        $releases = $this->packageInfoFetcher->getNpmReleases($package, $from, $to);
+        try {
+            $releases = $this->packageInfoFetcher->getNpmReleases($package, $from, $to);
+        } catch (PackageInformationsException $e) {
+            return  null;
+        }
 
         return count($releases);
     }

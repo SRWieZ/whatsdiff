@@ -15,7 +15,7 @@ afterEach(function () {
 //     // Create auth.json with private packagist credentials
 //     $authContent = [
 //         'http-basic' => [
-//             'repo.packagist.com' => [
+//             'composer.fluxui.dev' => [
 //                 'username' => 'test-user',
 //                 'password' => 'test-password',
 //             ],
@@ -81,7 +81,7 @@ afterEach(function () {
 //                 ],
 //                 'dist'    => [
 //                     'type'      => 'zip',
-//                     'url'       => 'https://repo.packagist.com/livewire/flux-pro/zipball/xyz789',
+//                     'url'       => 'https://composer.fluxui.dev/livewire/flux-pro/zipball/xyz789',
 //                     'reference' => 'xyz789',
 //                 ],
 //                 'type'    => 'library',
@@ -143,72 +143,73 @@ afterEach(function () {
 //     expect($consoleChange['to'])->toBe('v6.0.0');
 // });
 
-// it('handles private packages without authentication gracefully', function () {
-//     // No auth.json file created
-//
-//     // Initial composer.lock with private package
-//     $initialComposerLock = [
-//         '_readme'      => ['This file locks the dependencies of your project to a known state'],
-//         'content-hash' => 'abc123',
-//         'packages'     => [
-//             [
-//                 'name'    => 'livewire/flux-pro',
-//                 'version' => 'v1.0.0',
-//                 'dist'    => [
-//                     'type'      => 'zip',
-//                     'url'       => 'https://repo.packagist.com/livewire/flux-pro/zipball/abc123',
-//                     'reference' => 'abc123',
-//                 ],
-//             ],
-//         ],
-//     ];
-//
-//     file_put_contents($this->tempDir.'/composer.lock', json_encode($initialComposerLock, JSON_PRETTY_PRINT));
-//     runCommand('git add composer.lock');
-//     runCommand('git commit -m "Initial composer.lock with private package"');
-//
-//     // Update composer.lock
-//     $updatedComposerLock = [
-//         '_readme'      => ['This file locks the dependencies of your project to a known state'],
-//         'content-hash' => 'xyz789',
-//         'packages'     => [
-//             [
-//                 'name'    => 'livewire/flux-pro',
-//                 'version' => 'v1.1.0',
-//                 'dist'    => [
-//                     'type'      => 'zip',
-//                     'url'       => 'https://repo.packagist.com/livewire/flux-pro/zipball/xyz789',
-//                     'reference' => 'xyz789',
-//                 ],
-//             ],
-//         ],
-//     ];
-//
-//     file_put_contents($this->tempDir.'/composer.lock', json_encode($updatedComposerLock, JSON_PRETTY_PRINT));
-//     runCommand('git add composer.lock');
-//     runCommand('git commit -m "Update private package"');
-//
-//     // Run whatsdiff - should still work but without release count info
-//     $process = runWhatsDiff(['--format=json']);
-//     $output = $process->getOutput();
-//
-//     expect($output)->toBeJson();
-//
-//     $result = json_decode($output, true);
-//
-//     expect($result)->toHaveKey('diffs');
-//     expect($result['diffs'])->toHaveCount(1);
-//
-//     $changes = collect($result['diffs'][0]['changes']);
-//     $fluxChange = $changes->firstWhere('name', 'livewire/flux-pro');
-//
-//     expect($fluxChange)->not->toBeNull();
-//     expect($fluxChange['status'])->toBe('updated');
-//     expect($fluxChange['from'])->toBe('v1.0.0');
-//     expect($fluxChange['to'])->toBe('v1.1.0');
-//     // Release count might be 0 due to authentication failure
-//     expect($fluxChange['release_count'])->toBeNull();
-// });
+it('handles private packages without authentication gracefully', function () {
+    // No auth.json file created
+
+    // Initial composer.lock with private package
+    $initialComposerLock = [
+        '_readme'      => ['This file locks the dependencies of your project to a known state'],
+        'content-hash' => 'abc123',
+        'packages'     => [
+            [
+                'name'    => 'livewire/flux-pro',
+                'version' => 'v1.0.0',
+                'dist'    => [
+                    'type'      => 'zip',
+                    'url'       => 'https://repo.packagist.com/livewire/flux-pro/zipball/abc123',
+                    'reference' => 'abc123',
+                ],
+            ],
+        ],
+    ];
+
+    file_put_contents($this->tempDir.'/composer.lock', json_encode($initialComposerLock, JSON_PRETTY_PRINT));
+    runCommand('git add composer.lock');
+    runCommand('git commit -m "Initial composer.lock with private package"');
+
+    // Update composer.lock
+    $updatedComposerLock = [
+        '_readme'      => ['This file locks the dependencies of your project to a known state'],
+        'content-hash' => 'xyz789',
+        'packages'     => [
+            [
+                'name'    => 'livewire/flux-pro',
+                'version' => 'v1.1.0',
+                'dist'    => [
+                    'type'      => 'zip',
+                    'url'       => 'https://repo.packagist.com/livewire/flux-pro/zipball/xyz789',
+                    'reference' => 'xyz789',
+                ],
+            ],
+        ],
+    ];
+
+    file_put_contents($this->tempDir.'/composer.lock', json_encode($updatedComposerLock, JSON_PRETTY_PRINT));
+    runCommand('git add composer.lock');
+    runCommand('git commit -m "Update private package"');
+
+    // Run whatsdiff - should still work but without release count info
+    $process = runWhatsDiff(['--format=json']);
+    $output = $process->getOutput();
+
+    expect($output)->toBeJson();
+
+    $result = json_decode($output, true);
+
+    expect($result)->toHaveKey('diffs');
+    expect($result['diffs'])->toHaveCount(1);
+
+    $changes = collect($result['diffs'][0]['changes']);
+    $fluxChange = $changes->firstWhere('name', 'livewire/flux-pro');
+
+    expect($fluxChange)->not->toBeNull();
+    expect($fluxChange['status'])->toBe('updated');
+    expect($fluxChange['from'])->toBe('v1.0.0');
+    expect($fluxChange['to'])->toBe('v1.1.0');
+
+    // Release count might be null due to authentication failure
+    expect($fluxChange['release_count'])->toBeNull();
+});
 
 // it('prioritizes local auth.json over global auth.json', function () {
 //     // Create global auth.json

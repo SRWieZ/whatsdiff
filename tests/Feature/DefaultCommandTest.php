@@ -1,10 +1,16 @@
 <?php
 
-use Whatsdiff\Services\ProcessService;
+
+beforeEach(function () {
+    $this->tempDir = initTempDirectory();
+});
+
+afterEach(function () {
+    cleanupTempDirectory($this->tempDir);
+});
 
 test('application boots successfully', function () {
-    $processService = new ProcessService();
-    $process = $processService->php(['bin/whatsdiff', '--version']);
+    $process = runWhatsDiff(['--version']);
 
     expect($process->getExitCode())->toBe(0);
     expect($process->getOutput())->toContain('whatsdiff');
@@ -12,8 +18,7 @@ test('application boots successfully', function () {
 });
 
 test('help command works', function () {
-    $processService = new ProcessService();
-    $process = $processService->php(['bin/whatsdiff', '--help']);
+    $process = runWhatsDiff(['--help']);
 
     expect($process->getExitCode())->toBe(0);
     expect($process->getOutput())->toContain('See what\'s changed in your project\'s dependencies');
@@ -21,8 +26,7 @@ test('help command works', function () {
 });
 
 test('list command works', function () {
-    $processService = new ProcessService();
-    $process = $processService->php(['bin/whatsdiff', 'list']);
+    $process = runWhatsDiff(['list']);
 
     expect($process->getExitCode())->toBe(0);
     $outputString = $process->getOutput() . $process->getErrorOutput();
@@ -36,8 +40,7 @@ test('list command works', function () {
 
 test('main command executes without errors', function () {
     // Test without --ignore-last to avoid git history dependencies in CI
-    $processService = new ProcessService();
-    $process = $processService->php(['bin/whatsdiff']);
+    $process = runWhatsDiff();
 
     $outputString = $process->getOutput() . $process->getErrorOutput();
 
@@ -60,8 +63,7 @@ test('main command executes without errors', function () {
 
 test('symfony console integration works', function () {
     // Test that the application is using Symfony Console by checking help output structure
-    $processService = new ProcessService();
-    $process = $processService->php(['bin/whatsdiff', '--help']);
+    $process = runWhatsDiff(['--help']);
 
     expect($process->getExitCode())->toBe(0);
     $outputString = $process->getOutput();
@@ -72,8 +74,7 @@ test('symfony console integration works', function () {
 });
 
 test('error handling works for invalid options', function () {
-    $processService = new ProcessService();
-    $process = $processService->php(['bin/whatsdiff', '--invalid-option']);
+    $process = runWhatsDiff(['--invalid-option']);
 
     expect($process->getExitCode())->not->toBe(0);
     $outputString = $process->getOutput() . $process->getErrorOutput();
@@ -82,8 +83,7 @@ test('error handling works for invalid options', function () {
 
 test('ignore-last option is properly recognized', function () {
     // This should not throw an error about unknown option
-    $processService = new ProcessService();
-    $process = $processService->php(['bin/whatsdiff', '--ignore-last', '--help']);
+    $process = runWhatsDiff(['--ignore-last', '--help']);
 
     expect($process->getExitCode())->toBe(0);
     $outputString = $process->getOutput() . $process->getErrorOutput();

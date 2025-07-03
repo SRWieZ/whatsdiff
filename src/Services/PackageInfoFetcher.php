@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Whatsdiff\Services;
 
 use Composer\Semver\Comparator;
+use Whatsdiff\Analyzers\Exceptions\PackageInformationsException;
 use Whatsdiff\Analyzers\PackageManagerType;
 
 class PackageInfoFetcher
@@ -24,7 +25,7 @@ class PackageInfoFetcher
 
             $packageInfos = $this->httpService->get($cleanUrl, $options['options']);
         } catch (\Exception $e) {
-            throw new \RuntimeException("Failed to fetch package information for {$package}: " . $e->getMessage());
+            throw new PackageInformationsException("Failed to fetch package information for {$package}: " . $e->getMessage());
         }
 
         $packageData = json_decode($packageInfos, true);
@@ -54,7 +55,7 @@ class PackageInfoFetcher
         try {
             $packageInfos = $this->httpService->get($url);
         } catch (\Exception $e) {
-            throw new \RuntimeException("Failed to fetch package information for {$package}: " . $e->getMessage());
+            throw new PackageInformationsException("Failed to fetch package information for {$package}: " . $e->getMessage());
         }
 
         $packageData = json_decode($packageInfos, true);
