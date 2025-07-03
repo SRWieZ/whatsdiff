@@ -131,15 +131,16 @@ class DiffCalculator
             // Just iterate through the generator to trigger the diff calculation
         }
 
-        return $this->diffResult;
+        // Ensure we always return a valid DiffResult, even if something went wrong
+        return $this->getResult();
     }
 
     /**
      * Get the result of the last run() call
      */
-    public function getResult(): ?DiffResult
+    public function getResult(): DiffResult
     {
-        return $this->diffResult;
+        return $this->diffResult ?? new DiffResult(collect(), false);
     }
 
     /**
@@ -187,6 +188,9 @@ class DiffCalculator
     private function processDiffsWithProgress(): \Generator
     {
         $diffs = collect();
+
+        // Initialize with empty result to ensure we always have a valid DiffResult
+        $this->diffResult = new DiffResult($diffs, false);
 
         // Handle custom commits case
         if ($this->fromCommit !== null || $this->toCommit !== null) {
