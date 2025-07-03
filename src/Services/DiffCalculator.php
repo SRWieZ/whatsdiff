@@ -33,7 +33,8 @@ class DiffCalculator
     public function __construct(
         GitRepository $git,
         ComposerAnalyzer $composerAnalyzer,
-        NpmAnalyzer $npmAnalyzer
+        NpmAnalyzer $npmAnalyzer,
+        private readonly SemverAnalyzer $semverAnalyzer
     ) {
         $this->git = $git;
         $this->composerAnalyzer = $composerAnalyzer;
@@ -433,6 +434,7 @@ class DiffCalculator
         // Both versions exist - either updated or downgraded
         if ($infos['from'] !== null && $infos['to'] !== null) {
             $releasesCount = $skipReleaseCount ? null : $this->getReleasesCount($type, $package, $infos);
+            $semverChangeType = $this->semverAnalyzer->determineSemverChangeType($infos['from'], $infos['to']);
 
             if (Comparator::greaterThan($infos['to'], $infos['from'])) {
                 return PackageChange::updated(
@@ -441,6 +443,7 @@ class DiffCalculator
                     fromVersion: $infos['from'],
                     toVersion: $infos['to'],
                     releaseCount: $releasesCount,
+                    semver: $semverChangeType,
                 );
             } else {
                 return PackageChange::downgraded(
@@ -449,6 +452,7 @@ class DiffCalculator
                     fromVersion: $infos['from'],
                     toVersion: $infos['to'],
                     releaseCount: $releasesCount,
+                    semver: $semverChangeType,
                 );
             }
         }

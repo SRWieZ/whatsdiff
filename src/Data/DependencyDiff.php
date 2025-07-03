@@ -6,6 +6,7 @@ namespace Whatsdiff\Data;
 
 use Illuminate\Support\Collection;
 use Whatsdiff\Analyzers\PackageManagerType;
+use Whatsdiff\Enums\ChangeStatus;
 
 final readonly class DependencyDiff
 {

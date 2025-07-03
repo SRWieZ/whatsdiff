@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Whatsdiff\Data;
+namespace Whatsdiff\Enums;
 
 enum ChangeStatus: string
 {

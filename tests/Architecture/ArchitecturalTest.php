@@ -49,5 +49,4 @@ arch('data classes are readonly and final')
     ->expect('Whatsdiff\Data')
     ->classes()
     ->toBeReadonly()
-    ->toBeFinal()
-    ->ignoring('Whatsdiff\Data\ChangeStatus');
+    ->toBeFinal();

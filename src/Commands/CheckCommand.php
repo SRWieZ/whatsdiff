@@ -11,7 +11,7 @@ use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
 use Whatsdiff\Container\Container;
-use Whatsdiff\Data\ChangeStatus;
+use Whatsdiff\Enums\ChangeStatus;
 use Whatsdiff\Enums\CheckType;
 use Whatsdiff\Services\DiffCalculator;
 

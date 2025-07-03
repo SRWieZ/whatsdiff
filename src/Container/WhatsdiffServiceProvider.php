@@ -12,6 +12,7 @@ use Whatsdiff\Services\DiffCalculator;
 use Whatsdiff\Services\GitRepository;
 use Whatsdiff\Services\HttpService;
 use Whatsdiff\Services\PackageInfoFetcher;
+use Whatsdiff\Services\SemverAnalyzer;
 
 class WhatsdiffServiceProvider implements ServiceProviderInterface
 {
@@ -51,12 +52,18 @@ class WhatsdiffServiceProvider implements ServiceProviderInterface
             return new NpmAnalyzer($container->get(PackageInfoFetcher::class));
         });
 
+        // Register semver analyzer as singleton
+        $container->singleton(SemverAnalyzer::class, function () {
+            return new SemverAnalyzer();
+        });
+
         // Register diff calculator - not singleton as it might have different configurations
         $container->set(DiffCalculator::class, function (Container $container) {
             return new DiffCalculator(
                 $container->get(GitRepository::class),
                 $container->get(ComposerAnalyzer::class),
-                $container->get(NpmAnalyzer::class)
+                $container->get(NpmAnalyzer::class),
+                $container->get(SemverAnalyzer::class)
             );
         });
 
