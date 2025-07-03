@@ -10,6 +10,7 @@ use Symfony\Component\Console\Input\InputArgument;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Yaml\Yaml;
+use Whatsdiff\Container\Container;
 use Whatsdiff\Services\ConfigService;
 
 #[AsCommand(
@@ -19,6 +20,13 @@ use Whatsdiff\Services\ConfigService;
 )]
 class ConfigCommand extends Command
 {
+    private Container $container;
+
+    public function __construct(Container $container)
+    {
+        parent::__construct();
+        $this->container = $container;
+    }
     protected function configure(): void
     {
         $this
@@ -38,7 +46,7 @@ class ConfigCommand extends Command
 
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
-        $configService = new ConfigService();
+        $configService = $this->container->get(ConfigService::class);
 
         $key = $input->getArgument('key');
         $value = $input->getArgument('value');

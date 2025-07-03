@@ -10,16 +10,10 @@ use Symfony\Component\Console\Input\InputArgument;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
-use Whatsdiff\Analyzers\ComposerAnalyzer;
-use Whatsdiff\Analyzers\NpmAnalyzer;
+use Whatsdiff\Container\Container;
 use Whatsdiff\Data\ChangeStatus;
 use Whatsdiff\Enums\CheckType;
-use Whatsdiff\Services\CacheService;
-use Whatsdiff\Services\ConfigService;
 use Whatsdiff\Services\DiffCalculator;
-use Whatsdiff\Services\GitRepository;
-use Whatsdiff\Services\HttpService;
-use Whatsdiff\Services\PackageInfoFetcher;
 
 #[AsCommand(
     name: 'check',
@@ -28,6 +22,13 @@ use Whatsdiff\Services\PackageInfoFetcher;
 )]
 class CheckCommand extends Command
 {
+    private Container $container;
+
+    public function __construct(Container $container)
+    {
+        parent::__construct();
+        $this->container = $container;
+    }
     protected function configure(): void
     {
         $this
@@ -85,16 +86,8 @@ class CheckCommand extends Command
 
         // Initialize services
         try {
-            $configService = new ConfigService();
-            $cacheService = new CacheService($configService);
-            $httpService = new HttpService($cacheService);
-
-            $gitRepository = new GitRepository();
-            $packageInfoFetcher = new PackageInfoFetcher($httpService);
-            $composerAnalyzer = new ComposerAnalyzer($packageInfoFetcher);
-            $npmAnalyzer = new NpmAnalyzer($packageInfoFetcher);
-
-            $diffCalculator = new DiffCalculator($gitRepository, $composerAnalyzer, $npmAnalyzer);
+            // Get services from container
+            $diffCalculator = $this->container->get(DiffCalculator::class);
 
             // Calculate diffs - skip release count for performance
             $diffResult = $diffCalculator

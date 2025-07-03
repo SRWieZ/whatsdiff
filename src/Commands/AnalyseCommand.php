@@ -9,19 +9,14 @@ use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
-use Whatsdiff\Analyzers\ComposerAnalyzer;
-use Whatsdiff\Analyzers\NpmAnalyzer;
 use Whatsdiff\Analyzers\PackageManagerType;
+use Whatsdiff\Container\Container;
 use Whatsdiff\Outputs\JsonOutput;
 use Whatsdiff\Outputs\MarkdownOutput;
 use Whatsdiff\Outputs\OutputFormatterInterface;
 use Whatsdiff\Outputs\TextOutput;
 use Whatsdiff\Services\CacheService;
-use Whatsdiff\Services\ConfigService;
 use Whatsdiff\Services\DiffCalculator;
-use Whatsdiff\Services\GitRepository;
-use Whatsdiff\Services\HttpService;
-use Whatsdiff\Services\PackageInfoFetcher;
 
 use function Laravel\Prompts\clear;
 use function Laravel\Prompts\progress;
@@ -33,6 +28,13 @@ use function Laravel\Prompts\progress;
 )]
 class AnalyseCommand extends Command
 {
+    private Container $container;
+
+    public function __construct(Container $container)
+    {
+        parent::__construct();
+        $this->container = $container;
+    }
     /**
      * Get shared options that can be used by multiple commands
      */
@@ -127,21 +129,15 @@ class AnalyseCommand extends Command
         }
 
         try {
-            // Initialize services
-            $configService = new ConfigService();
-            $cacheService = new CacheService($configService);
+            // Get services from container
+            $cacheService = $this->container->get(CacheService::class);
+            /** @var DiffCalculator $diffCalculator */
+            $diffCalculator = $this->container->get(DiffCalculator::class);
 
             // Disable cache if requested
             if ($noCache) {
                 $cacheService->disableCache();
             }
-
-            $httpService = new HttpService($cacheService);
-            $git = new GitRepository();
-            $packageInfoFetcher = new PackageInfoFetcher($httpService);
-            $composerAnalyzer = new ComposerAnalyzer($packageInfoFetcher);
-            $npmAnalyzer = new NpmAnalyzer($packageInfoFetcher);
-            $diffCalculator = new DiffCalculator($git, $composerAnalyzer, $npmAnalyzer);
 
             // Parse dependency types from include/exclude options
             $dependencyTypes = $this->parseDependencyTypes($includeTypes, $excludeTypes, $output);
@@ -149,28 +145,25 @@ class AnalyseCommand extends Command
                 return Command::FAILURE;
             }
 
-            // Calculate diffs using fluent interface
-            $calculator = $diffCalculator;
-
             // Configure dependency types if specified
             foreach ($dependencyTypes as $type) {
-                $calculator = $calculator->for($type);
+                $diffCalculator->for($type);
             }
 
             if ($ignoreLast) {
-                $calculator = $calculator->ignoreLastCommit();
+                $diffCalculator->ignoreLastCommit();
             }
 
             if ($fromCommit !== null) {
-                $calculator = $calculator->fromCommit($fromCommit);
+                $diffCalculator->fromCommit($fromCommit);
             }
 
             if ($toCommit !== null) {
-                $calculator = $calculator->toCommit($toCommit);
+                $diffCalculator->toCommit($toCommit);
             }
 
             if ($this->shouldShowProgress($format, $noAnsi, $input)) {
-                [$total, $generator] = $calculator->run(withProgress: true);
+                [$total, $generator] = $diffCalculator->run(withProgress: true);
 
                 // Use Laravel Prompts for progress bar
                 if ($total) {
@@ -178,10 +171,10 @@ class AnalyseCommand extends Command
                     $this->showProgressBar($total, $generator);
                 }
 
-                $result = $calculator->getResult();
+                $result = $diffCalculator->getResult();
 
             } else {
-                $result = $calculator->run();
+                $result = $diffCalculator->run();
             }
 
             // Get appropriate formatter

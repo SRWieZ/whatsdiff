@@ -9,15 +9,10 @@ use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
-use Whatsdiff\Analyzers\ComposerAnalyzer;
-use Whatsdiff\Analyzers\NpmAnalyzer;
+use Whatsdiff\Container\Container;
 use Whatsdiff\Outputs\Tui\TerminalUI;
 use Whatsdiff\Services\CacheService;
-use Whatsdiff\Services\ConfigService;
 use Whatsdiff\Services\DiffCalculator;
-use Whatsdiff\Services\GitRepository;
-use Whatsdiff\Services\HttpService;
-use Whatsdiff\Services\PackageInfoFetcher;
 
 #[AsCommand(
     name: 'tui',
@@ -26,6 +21,13 @@ use Whatsdiff\Services\PackageInfoFetcher;
 )]
 class TuiCommand extends Command
 {
+    private Container $container;
+
+    public function __construct(Container $container)
+    {
+        parent::__construct();
+        $this->container = $container;
+    }
     protected function configure(): void
     {
         $this
@@ -50,21 +52,14 @@ class TuiCommand extends Command
         $noCache = (bool) $input->getOption('no-cache');
 
         try {
-            // Initialize services
-            $configService = new ConfigService();
-            $cacheService = new CacheService($configService);
+            // Get services from container
+            $cacheService = $this->container->get(CacheService::class);
+            $diffCalculator = $this->container->get(DiffCalculator::class);
 
             // Disable cache if requested
             if ($noCache) {
                 $cacheService->disableCache();
             }
-
-            $httpService = new HttpService($cacheService);
-            $git = new GitRepository();
-            $packageInfoFetcher = new PackageInfoFetcher($httpService);
-            $composerAnalyzer = new ComposerAnalyzer($packageInfoFetcher);
-            $npmAnalyzer = new NpmAnalyzer($packageInfoFetcher);
-            $diffCalculator = new DiffCalculator($git, $composerAnalyzer, $npmAnalyzer);
 
             if ($ignoreLast) {
                 $diffCalculator->ignoreLastCommit();

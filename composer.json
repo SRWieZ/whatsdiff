@@ -26,7 +26,8 @@
     "symfony/cache": "^6.0|^7.0",
     "symfony/filesystem": "^6.0|^7.0",
     "symfony/yaml": "^6.0|^7.0",
-    "guzzlehttp/guzzle": "^7.0"
+    "guzzlehttp/guzzle": "^7.0",
+    "psr/container": "^2.0"
   },
   "require-dev": {
     "pestphp/pest": "^2.0|^3.0",
@@ -60,15 +61,15 @@
       "./build.sh"
     ],
     "qa": [
-      "@composer static",
-      "@composer test"
+      "@static",
+      "@test"
     ],
     "static": [
-      "@composer pint",
-      "@composer phpstan"
+      "@pint",
+      "@phpstan"
     ],
     "box": "./vendor/bin/box",
-    "pint": "./vendor/bin/pint --preset psr12",
+    "pint": "./vendor/bin/pint --preset psr12 --parallel",
     "phpstan": "./vendor/bin/phpstan analyse",
     "test": "./vendor/bin/pest --parallel"
   }

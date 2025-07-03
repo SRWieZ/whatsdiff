@@ -10,10 +10,19 @@ use Symfony\Component\Console\Input\ArrayInput;
 use Symfony\Component\Console\Input\InputArgument;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
+use Whatsdiff\Container\Container;
 
 #[AsCommand(name: 'between')]
 class BetweenCommand extends Command
 {
+    /** @phpstan-ignore-next-line */
+    private Container $container;
+
+    public function __construct(Container $container)
+    {
+        parent::__construct();
+        $this->container = $container;
+    }
     protected function configure(): void
     {
         $this
