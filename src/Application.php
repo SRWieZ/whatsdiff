@@ -10,10 +10,14 @@ use Whatsdiff\Commands\CheckCommand;
 use Whatsdiff\Commands\ConfigCommand;
 use Whatsdiff\Commands\AnalyseCommand;
 use Whatsdiff\Commands\TuiCommand;
+use Whatsdiff\Container\Container;
+use Whatsdiff\Container\WhatsdiffServiceProvider;
 
 class Application extends BaseApplication
 {
     private const VERSION = '@git_tag@';
+
+    private Container $container;
 
     public function __construct()
     {
@@ -26,12 +30,21 @@ class Application extends BaseApplication
 
         parent::__construct('whatsdiff', self::getVersionString());
 
-        $this->add(new AnalyseCommand());
-        $this->add(new BetweenCommand());
-        $this->add(new TuiCommand());
-        $this->add(new CheckCommand());
-        $this->add(new ConfigCommand());
+        // Initialize container and register services
+        $this->container = new Container();
+        $this->container->register(new WhatsdiffServiceProvider());
+
+        $this->add(new AnalyseCommand($this->container));
+        $this->add(new BetweenCommand($this->container));
+        $this->add(new TuiCommand($this->container));
+        $this->add(new CheckCommand($this->container));
+        $this->add(new ConfigCommand($this->container));
         $this->setDefaultCommand('analyse');
+    }
+
+    public function getContainer(): Container
+    {
+        return $this->container;
     }
 
     public function getLongVersion(): string
