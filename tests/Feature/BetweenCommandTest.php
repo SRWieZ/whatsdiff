@@ -15,28 +15,17 @@ afterEach(function () {
 
 it('compares dependencies between two commits', function () {
     // Initial composer.lock
-    $initialComposerLock = [
-        '_readme'      => ['This file locks the dependencies of your project to a known state'],
-        'content-hash' => 'abc123',
-        'packages'     => [
-            [
-                'name'    => 'symfony/console',
-                'version' => 'v5.4.0',
-                'source'  => ['type' => 'git', 'url' => 'https://github.com/symfony/console.git'],
-            ],
-        ],
-    ];
+    $initialComposerLock = generateComposerLock(['symfony/console' => 'v5.4.0']);
 
-    file_put_contents($this->tempDir.'/composer.lock', json_encode($initialComposerLock, JSON_PRETTY_PRINT));
+    file_put_contents($this->tempDir.'/composer.lock', $initialComposerLock);
     runCommand('git add composer.lock');
     runCommand('git commit -m "Initial composer.lock"');
     $firstCommit = trim(runCommand('git rev-parse HEAD'));
 
     // Update symfony/console
-    $updatedComposerLock = $initialComposerLock;
-    $updatedComposerLock['packages'][0]['version'] = 'v6.0.0';
+    $updatedComposerLock = generateComposerLock(['symfony/console' => 'v6.0.0']);
 
-    file_put_contents($this->tempDir.'/composer.lock', json_encode($updatedComposerLock, JSON_PRETTY_PRINT));
+    file_put_contents($this->tempDir.'/composer.lock', $updatedComposerLock);
     runCommand('git add composer.lock');
     runCommand('git commit -m "Update symfony/console"');
     $secondCommit = trim(runCommand('git rev-parse HEAD'));
@@ -57,28 +46,17 @@ it('compares dependencies between two commits', function () {
 
 it('compares from a commit to HEAD by default', function () {
     // Initial composer.lock
-    $initialComposerLock = [
-        '_readme'      => ['This file locks the dependencies of your project to a known state'],
-        'content-hash' => 'abc123',
-        'packages'     => [
-            [
-                'name'    => 'laravel/framework',
-                'version' => 'v9.0.0',
-                'source'  => ['type' => 'git', 'url' => 'https://github.com/laravel/framework.git'],
-            ],
-        ],
-    ];
+    $initialComposerLock = generateComposerLock(['laravel/framework' => 'v9.0.0']);
 
-    file_put_contents($this->tempDir.'/composer.lock', json_encode($initialComposerLock, JSON_PRETTY_PRINT));
+    file_put_contents($this->tempDir.'/composer.lock', $initialComposerLock);
     runCommand('git add composer.lock');
     runCommand('git commit -m "Initial composer.lock"');
     $firstCommit = trim(runCommand('git rev-parse HEAD'));
 
     // Update laravel/framework
-    $updatedComposerLock = $initialComposerLock;
-    $updatedComposerLock['packages'][0]['version'] = 'v10.0.0';
+    $updatedComposerLock = generateComposerLock(['laravel/framework' => 'v10.0.0']);
 
-    file_put_contents($this->tempDir.'/composer.lock', json_encode($updatedComposerLock, JSON_PRETTY_PRINT));
+    file_put_contents($this->tempDir.'/composer.lock', $updatedComposerLock);
     runCommand('git add composer.lock');
     runCommand('git commit -m "Update laravel/framework"');
 
@@ -98,28 +76,17 @@ it('compares from a commit to HEAD by default', function () {
 
 it('supports JSON output format', function () {
     // Initial composer.lock
-    $initialComposerLock = [
-        '_readme'      => ['This file locks the dependencies of your project to a known state'],
-        'content-hash' => 'abc123',
-        'packages'     => [
-            [
-                'name'    => 'monolog/monolog',
-                'version' => '2.8.0',
-                'source'  => ['type' => 'git', 'url' => 'https://github.com/Seldaek/monolog.git'],
-            ],
-        ],
-    ];
+    $initialComposerLock = generateComposerLock(['monolog/monolog' => '2.8.0']);
 
-    file_put_contents($this->tempDir.'/composer.lock', json_encode($initialComposerLock, JSON_PRETTY_PRINT));
+    file_put_contents($this->tempDir.'/composer.lock', $initialComposerLock);
     runCommand('git add composer.lock');
     runCommand('git commit -m "Initial composer.lock"');
     $firstCommit = trim(runCommand('git rev-parse HEAD'));
 
     // Update monolog/monolog
-    $updatedComposerLock = $initialComposerLock;
-    $updatedComposerLock['packages'][0]['version'] = '3.0.0';
+    $updatedComposerLock = generateComposerLock(['monolog/monolog' => '3.0.0']);
 
-    file_put_contents($this->tempDir.'/composer.lock', json_encode($updatedComposerLock, JSON_PRETTY_PRINT));
+    file_put_contents($this->tempDir.'/composer.lock', $updatedComposerLock);
     runCommand('git add composer.lock');
     runCommand('git commit -m "Update monolog/monolog"');
     $secondCommit = trim(runCommand('git rev-parse HEAD'));
@@ -140,28 +107,17 @@ it('supports JSON output format', function () {
 
 it('supports markdown output format', function () {
     // Initial composer.lock
-    $initialComposerLock = [
-        '_readme'      => ['This file locks the dependencies of your project to a known state'],
-        'content-hash' => 'abc123',
-        'packages'     => [
-            [
-                'name'    => 'guzzlehttp/guzzle',
-                'version' => '7.4.0',
-                'source'  => ['type' => 'git', 'url' => 'https://github.com/guzzle/guzzle.git'],
-            ],
-        ],
-    ];
+    $initialComposerLock = generateComposerLock(['guzzlehttp/guzzle' => '7.4.0']);
 
-    file_put_contents($this->tempDir.'/composer.lock', json_encode($initialComposerLock, JSON_PRETTY_PRINT));
+    file_put_contents($this->tempDir.'/composer.lock', $initialComposerLock);
     runCommand('git add composer.lock');
     runCommand('git commit -m "Initial composer.lock"');
     $firstCommit = trim(runCommand('git rev-parse HEAD'));
 
     // Update guzzlehttp/guzzle
-    $updatedComposerLock = $initialComposerLock;
-    $updatedComposerLock['packages'][0]['version'] = '7.5.0';
+    $updatedComposerLock = generateComposerLock(['guzzlehttp/guzzle' => '7.5.0']);
 
-    file_put_contents($this->tempDir.'/composer.lock', json_encode($updatedComposerLock, JSON_PRETTY_PRINT));
+    file_put_contents($this->tempDir.'/composer.lock', $updatedComposerLock);
     runCommand('git add composer.lock');
     runCommand('git commit -m "Update guzzlehttp/guzzle"');
     $secondCommit = trim(runCommand('git rev-parse HEAD'));
@@ -181,28 +137,17 @@ it('supports markdown output format', function () {
 
 it('supports --no-cache option', function () {
     // Initial composer.lock
-    $initialComposerLock = [
-        '_readme'      => ['This file locks the dependencies of your project to a known state'],
-        'content-hash' => 'abc123',
-        'packages'     => [
-            [
-                'name'    => 'doctrine/dbal',
-                'version' => '3.5.0',
-                'source'  => ['type' => 'git', 'url' => 'https://github.com/doctrine/dbal.git'],
-            ],
-        ],
-    ];
+    $initialComposerLock = generateComposerLock(['doctrine/dbal' => '3.5.0']);
 
-    file_put_contents($this->tempDir.'/composer.lock', json_encode($initialComposerLock, JSON_PRETTY_PRINT));
+    file_put_contents($this->tempDir.'/composer.lock', $initialComposerLock);
     runCommand('git add composer.lock');
     runCommand('git commit -m "Initial composer.lock"');
     $firstCommit = trim(runCommand('git rev-parse HEAD'));
 
     // Update doctrine/dbal
-    $updatedComposerLock = $initialComposerLock;
-    $updatedComposerLock['packages'][0]['version'] = '3.6.0';
+    $updatedComposerLock = generateComposerLock(['doctrine/dbal' => '3.6.0']);
 
-    file_put_contents($this->tempDir.'/composer.lock', json_encode($updatedComposerLock, JSON_PRETTY_PRINT));
+    file_put_contents($this->tempDir.'/composer.lock', $updatedComposerLock);
     runCommand('git add composer.lock');
     runCommand('git commit -m "Update doctrine/dbal"');
     $secondCommit = trim(runCommand('git rev-parse HEAD'));
@@ -216,28 +161,17 @@ it('supports --no-cache option', function () {
 
 it('works with git tags', function () {
     // Initial composer.lock
-    $initialComposerLock = [
-        '_readme'      => ['This file locks the dependencies of your project to a known state'],
-        'content-hash' => 'abc123',
-        'packages'     => [
-            [
-                'name'    => 'phpunit/phpunit',
-                'version' => '9.5.0',
-                'source'  => ['type' => 'git', 'url' => 'https://github.com/sebastianbergmann/phpunit.git'],
-            ],
-        ],
-    ];
+    $initialComposerLock = generateComposerLock(['phpunit/phpunit' => '9.5.0']);
 
-    file_put_contents($this->tempDir.'/composer.lock', json_encode($initialComposerLock, JSON_PRETTY_PRINT));
+    file_put_contents($this->tempDir.'/composer.lock', $initialComposerLock);
     runCommand('git add composer.lock');
     runCommand('git commit -m "Initial composer.lock"');
     runCommand('git tag v1.0.0');
 
     // Update phpunit/phpunit
-    $updatedComposerLock = $initialComposerLock;
-    $updatedComposerLock['packages'][0]['version'] = '10.0.0';
+    $updatedComposerLock = generateComposerLock(['phpunit/phpunit' => '10.0.0']);
 
-    file_put_contents($this->tempDir.'/composer.lock', json_encode($updatedComposerLock, JSON_PRETTY_PRINT));
+    file_put_contents($this->tempDir.'/composer.lock', $updatedComposerLock);
     runCommand('git add composer.lock');
     runCommand('git commit -m "Update phpunit/phpunit"');
     runCommand('git tag v2.0.0');

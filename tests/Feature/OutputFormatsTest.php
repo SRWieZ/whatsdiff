@@ -15,27 +15,16 @@ afterEach(function () {
 
 test('text format outputs readable diff information', function () {
     // Setup git repository with dependency changes
-    $initialComposerLock = [
-        '_readme'      => ['This file locks the dependencies of your project to a known state'],
-        'content-hash' => 'abc123',
-        'packages'     => [
-            [
-                'name'    => 'laravel/framework',
-                'version' => 'v9.0.0',
-                'source'  => ['type' => 'git', 'url' => 'https://github.com/laravel/framework.git'],
-            ],
-        ],
-    ];
+    $initialComposerLock = generateComposerLock(['laravel/framework' => 'v9.0.0']);
 
-    file_put_contents($this->tempDir.'/composer.lock', json_encode($initialComposerLock, JSON_PRETTY_PRINT));
+    file_put_contents($this->tempDir.'/composer.lock', $initialComposerLock);
     runCommand('git add composer.lock', $this->tempDir);
     runCommand('git commit -m "Initial composer.lock"', $this->tempDir);
 
     // Update package
-    $updatedComposerLock = $initialComposerLock;
-    $updatedComposerLock['packages'][0]['version'] = 'v10.0.0';
+    $updatedComposerLock = generateComposerLock(['laravel/framework' => 'v10.0.0']);
 
-    file_put_contents($this->tempDir.'/composer.lock', json_encode($updatedComposerLock, JSON_PRETTY_PRINT));
+    file_put_contents($this->tempDir.'/composer.lock', $updatedComposerLock);
     runCommand('git add composer.lock', $this->tempDir);
     runCommand('git commit -m "Update laravel/framework"', $this->tempDir);
 
@@ -54,27 +43,16 @@ test('text format outputs readable diff information', function () {
 
 test('json format always returns valid JSON ', function () {
     // Setup git repository with dependency changes
-    $initialComposerLock = [
-        '_readme'      => ['This file locks the dependencies of your project to a known state'],
-        'content-hash' => 'abc123',
-        'packages'     => [
-            [
-                'name'    => 'symfony/console',
-                'version' => 'v5.4.0',
-                'source'  => ['type' => 'git', 'url' => 'https://github.com/symfony/console.git'],
-            ],
-        ],
-    ];
+    $initialComposerLock = generateComposerLock(['symfony/console' => 'v5.4.0']);
 
-    file_put_contents($this->tempDir.'/composer.lock', json_encode($initialComposerLock, JSON_PRETTY_PRINT));
+    file_put_contents($this->tempDir.'/composer.lock', $initialComposerLock);
     runCommand('git add composer.lock', $this->tempDir);
     runCommand('git commit -m "Initial composer.lock"', $this->tempDir);
 
     // Update package
-    $updatedComposerLock = $initialComposerLock;
-    $updatedComposerLock['packages'][0]['version'] = 'v6.0.0';
+    $updatedComposerLock = generateComposerLock(['symfony/console' => 'v6.0.0']);
 
-    file_put_contents($this->tempDir.'/composer.lock', json_encode($updatedComposerLock, JSON_PRETTY_PRINT));
+    file_put_contents($this->tempDir.'/composer.lock', $updatedComposerLock);
     runCommand('git add composer.lock', $this->tempDir);
     runCommand('git commit -m "Update symfony/console"', $this->tempDir);
 
@@ -133,31 +111,19 @@ test('json format returns valid JSON error on failure', function () {
 
 test('markdown format outputs proper markdown structure', function () {
     // Setup git repository with dependency changes
-    $initialComposerLock = [
-        '_readme'      => ['This file locks the dependencies of your project to a known state'],
-        'content-hash' => 'abc123',
-        'packages'     => [
-            [
-                'name'    => 'guzzlehttp/guzzle',
-                'version' => '7.4.0',
-                'source'  => ['type' => 'git', 'url' => 'https://github.com/guzzle/guzzle.git'],
-            ],
-        ],
-    ];
+    $initialComposerLock = generateComposerLock(['guzzlehttp/guzzle' => '7.4.0']);
 
-    file_put_contents($this->tempDir.'/composer.lock', json_encode($initialComposerLock, JSON_PRETTY_PRINT));
+    file_put_contents($this->tempDir.'/composer.lock', $initialComposerLock);
     runCommand('git add composer.lock', $this->tempDir);
     runCommand('git commit -m "Initial composer.lock"', $this->tempDir);
 
     // Add a package
-    $updatedComposerLock = $initialComposerLock;
-    $updatedComposerLock['packages'][] = [
-        'name'    => 'monolog/monolog',
-        'version' => '3.0.0',
-        'source'  => ['type' => 'git', 'url' => 'https://github.com/Seldaek/monolog.git'],
-    ];
+    $updatedComposerLock = generateComposerLock([
+        'guzzlehttp/guzzle' => '7.4.0',
+        'monolog/monolog' => '3.0.0',
+    ]);
 
-    file_put_contents($this->tempDir.'/composer.lock', json_encode($updatedComposerLock, JSON_PRETTY_PRINT));
+    file_put_contents($this->tempDir.'/composer.lock', $updatedComposerLock);
     runCommand('git add composer.lock', $this->tempDir);
     runCommand('git commit -m "Add monolog/monolog"', $this->tempDir);
 
@@ -176,28 +142,16 @@ test('markdown format outputs proper markdown structure', function () {
 
 test('text format handles npm packages correctly', function () {
     // Setup git repository with npm package changes
-    $initialPackageLock = [
-        'name' => 'test-project',
-        'version' => '1.0.0',
-        'lockfileVersion' => 3,
-        'packages' => [
-            '' => ['name' => 'test-project', 'version' => '1.0.0'],
-            'node_modules/lodash' => [
-                'version' => '4.17.20',
-                'resolved' => 'https://registry.npmjs.org/lodash/-/lodash-4.17.20.tgz',
-            ],
-        ],
-    ];
+    $initialPackageLock = generatePackageLock(['lodash' => '4.17.20']);
 
-    file_put_contents($this->tempDir.'/package-lock.json', json_encode($initialPackageLock, JSON_PRETTY_PRINT));
+    file_put_contents($this->tempDir.'/package-lock.json', $initialPackageLock);
     runCommand('git add package-lock.json', $this->tempDir);
     runCommand('git commit -m "Initial package-lock.json"', $this->tempDir);
 
     // Update package
-    $updatedPackageLock = $initialPackageLock;
-    $updatedPackageLock['packages']['node_modules/lodash']['version'] = '4.17.21';
+    $updatedPackageLock = generatePackageLock(['lodash' => '4.17.21']);
 
-    file_put_contents($this->tempDir.'/package-lock.json', json_encode($updatedPackageLock, JSON_PRETTY_PRINT));
+    file_put_contents($this->tempDir.'/package-lock.json', $updatedPackageLock);
     runCommand('git add package-lock.json', $this->tempDir);
     runCommand('git commit -m "Update lodash"', $this->tempDir);
 
