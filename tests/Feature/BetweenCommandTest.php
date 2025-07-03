@@ -30,13 +30,7 @@ it('compares dependencies between two commits', function () {
     runCommand('git commit -m "Update symfony/console"');
     $secondCommit = trim(runCommand('git rev-parse HEAD'));
 
-    $processService = new ProcessService();
-
-    // Test between command with commit hashes
-    $process = $processService->php(
-        [realpath(__DIR__.'/../../bin/whatsdiff'), 'between', $firstCommit, $secondCommit],
-        $this->tempDir
-    );
+    $process = runWhatsDiff(['between', $firstCommit, $secondCommit]);
 
     expect($process->getExitCode())->toBe(Command::SUCCESS);
     expect($process->getOutput())->toContain('symfony/console');
@@ -60,13 +54,7 @@ it('compares from a commit to HEAD by default', function () {
     runCommand('git add composer.lock');
     runCommand('git commit -m "Update laravel/framework"');
 
-    $processService = new ProcessService();
-
-    // Test between command with only from commit (should compare to HEAD)
-    $process = $processService->php(
-        [realpath(__DIR__.'/../../bin/whatsdiff'), 'between', $firstCommit],
-        $this->tempDir
-    );
+    $process = runWhatsDiff(['between', $firstCommit]);
 
     expect($process->getExitCode())->toBe(Command::SUCCESS);
     expect($process->getOutput())->toContain('laravel/framework');
@@ -91,13 +79,7 @@ it('supports JSON output format', function () {
     runCommand('git commit -m "Update monolog/monolog"');
     $secondCommit = trim(runCommand('git rev-parse HEAD'));
 
-    $processService = new ProcessService();
-
-    // Test JSON output format
-    $process = $processService->php(
-        [realpath(__DIR__.'/../../bin/whatsdiff'), 'between', $firstCommit, $secondCommit, '--format=json'],
-        $this->tempDir
-    );
+    $process = runWhatsDiff(['between', $firstCommit, $secondCommit, '--format=json']);
 
     expect($process->getExitCode())->toBe(Command::SUCCESS);
     $output = json_decode($process->getOutput(), true);
@@ -122,13 +104,7 @@ it('supports markdown output format', function () {
     runCommand('git commit -m "Update guzzlehttp/guzzle"');
     $secondCommit = trim(runCommand('git rev-parse HEAD'));
 
-    $processService = new ProcessService();
-
-    // Test markdown output format
-    $process = $processService->php(
-        [realpath(__DIR__.'/../../bin/whatsdiff'), 'between', $firstCommit, $secondCommit, '--format=markdown'],
-        $this->tempDir
-    );
+    $process = runWhatsDiff(['between', $firstCommit, $secondCommit, '--format=markdown']);
 
     expect($process->getExitCode())->toBe(Command::SUCCESS);
     expect($process->getOutput())->toContain('##');
