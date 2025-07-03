@@ -61,15 +61,15 @@
       "./build.sh"
     ],
     "qa": [
-      "@composer static",
-      "@composer test"
+      "@static",
+      "@test"
     ],
     "static": [
-      "@composer pint",
-      "@composer phpstan"
+      "@pint",
+      "@phpstan"
     ],
     "box": "./vendor/bin/box",
-    "pint": "./vendor/bin/pint --preset psr12",
+    "pint": "./vendor/bin/pint --preset psr12 --parallel",
     "phpstan": "./vendor/bin/phpstan analyse",
     "test": "./vendor/bin/pest --parallel"
   }
