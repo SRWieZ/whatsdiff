@@ -11,7 +11,10 @@ use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
 use Whatsdiff\Analyzers\PackageManagerType;
 use Whatsdiff\Container\Container;
+use Whatsdiff\Outputs\JsonOutput;
+use Whatsdiff\Outputs\MarkdownOutput;
 use Whatsdiff\Outputs\OutputFormatterInterface;
+use Whatsdiff\Outputs\TextOutput;
 use Whatsdiff\Services\CacheService;
 use Whatsdiff\Services\DiffCalculator;
 
@@ -191,9 +194,11 @@ class AnalyseCommand extends Command
 
     private function getFormatter(string $format, bool $noAnsi): OutputFormatterInterface
     {
-        /** @var callable $formatterFactory */
-        $formatterFactory = $this->container->get('formatter.factory');
-        return $formatterFactory($format, ! $noAnsi);
+        return match ($format) {
+            'json' => new JsonOutput(),
+            'markdown' => new MarkdownOutput(),
+            default => new TextOutput(! $noAnsi),
+        };
     }
 
     private function shouldShowProgress($format, bool $noAnsi, InputInterface $input): bool
