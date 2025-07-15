@@ -162,6 +162,7 @@ class AnalyseCommand extends Command
                 $diffCalculator->toCommit($toCommit);
             }
 
+
             if ($this->shouldShowProgress($format, $noAnsi, $input)) {
                 [$total, $generator] = $diffCalculator->run(withProgress: true);
 
@@ -223,15 +224,37 @@ class AnalyseCommand extends Command
      */
     public function showProgressBar(mixed $total, mixed $generator): void
     {
-        $progress = progress(label: 'Analysing changes..', steps: $total);
-
-        $progress->start();
+        $startTime = microtime(true);
+        $progressStarted = false;
+        $progress = null;
+        $processedCount = 0;
 
         foreach ($generator as $package) {
-            $progress->advance();
+            $processedCount++;
+
+            // Check if 1 second has passed
+            $elapsedTime = microtime(true) - $startTime;
+
+            if (!$progressStarted && $elapsedTime >= 1.0) {
+                // Start showing the progress bar
+                $progress = progress(label: 'Analysing changes..', steps: $total);
+                $progress->start();
+
+                // Advance to current position
+                for ($i = 0; $i < $processedCount; $i++) {
+                    $progress->advance();
+                }
+
+                $progressStarted = true;
+            } elseif ($progressStarted && $progress) {
+                $progress->advance();
+            }
         }
 
-        $progress->finish();
+        // Finish the progress bar if it was started
+        if ($progressStarted && $progress) {
+            $progress->finish();
+        }
         // clear();
     }
 
