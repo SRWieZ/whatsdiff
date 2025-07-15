@@ -3,7 +3,6 @@
 declare(strict_types=1);
 
 use Symfony\Component\Console\Command\Command;
-use Whatsdiff\Services\ProcessService;
 
 beforeEach(function () {
     $this->tempDir = initTempDirectory();
